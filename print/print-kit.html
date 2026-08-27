@@ -52,11 +52,11 @@
   .psub{ font-size:10.5px; color:#555; margin:0 0 3mm; line-height:1.5; }
   .pbody{ flex:1; min-height:0; }
 
-  /* 地图：每页 2 张 5×5 */
-  .maps{ display:flex; flex-direction:column; gap:5mm; }
-  .map{ border:1px dashed var(--cut); padding:2.5mm; background:#fff; }
-  .map h3{ margin:0 0 1.5mm; font-size:11px; font-weight:600; }
-  .map .grid{ display:grid; grid-template-columns:repeat(5,22mm); grid-template-rows:repeat(5,22mm); }
+  /* 地图：每页 6 张（2 列 × 3 行），格子缩小到 14mm */
+  .maps{ display:grid; grid-template-columns:repeat(2,1fr); gap:4mm; }
+  .map{ border:1px dashed var(--cut); padding:2mm; background:#fff; }
+  .map h3{ margin:0 0 1mm; font-size:9px; font-weight:600; }
+  .map .grid{ display:grid; grid-template-columns:repeat(5,14mm); grid-template-rows:repeat(5,14mm); }
   .map .cell{ border:0.5px solid var(--line); }
 
   /* 图例对照条 */
@@ -67,12 +67,12 @@
 
   /* 贴纸通用 */
   .sticker{ border:1px dashed var(--cut); display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fff; }
-  .sticker svg{ width:14mm; height:14mm; }
-  .sticker .lbl{ font-size:8.5px; margin-top:1mm; }
+  .sticker svg{ width:12mm; height:12mm; }
+  .sticker .lbl{ font-size:7px; margin-top:0.5mm; }
   .legend-rows{ display:flex; flex-direction:column; gap:2mm; }
   .legend-row .rh{ font-size:10.5px; font-weight:600; margin-bottom:1mm; }
   .legend-row .rgrid{ display:flex; flex-wrap:wrap; gap:2mm; }
-  .legend-row .sticker{ width:24mm; height:24mm; }
+  .legend-row .sticker{ width:14mm; height:14mm; }
 
   /* 程序动作块：小积木 */
   .prog-wrap{ display:flex; flex-wrap:wrap; gap:2mm; }
@@ -177,7 +177,7 @@ const ELEMENTS=[
   {k:'gem',nm:'宝石',ds:'收集目标',c:'#EF9F27'},
   {k:'sw',nm:'开关',ds:'踩一下切换开/关',c:'#D85A30'},
   {k:'portal',nm:'传送门',ds:'成对，踩上瞬移',c:'#1D9E75'},
-  {k:'wall',nm:'墙',ds:'不可通行',c:'#5F5E5A',n:24},
+  {k:'wall',nm:'墙',ds:'不可通行',c:'#5F5E5A',n:52},
   {k:'goal',nm:'终点',ds:'到达即胜利',c:'#639922'},
   {k:'start',nm:'起点',ds:'角色出发处',c:'#534AB7'},
 ];
@@ -225,7 +225,7 @@ function legendBody(list){
   ov+='</div><div class="legend-rows">';
     list.forEach(e=>{
       ov+=`<div class="legend-row"><div class="rh">${e.nm}（${e.ds}）</div><div class="rgrid">`;
-      const cnt=e.n||12;
+      const cnt=e.n||36;
       for(let i=0;i<cnt;i++) ov+=`<div class="sticker">${icon(e.k,e.c)}<span class="lbl">${e.nm}</span></div>`;
       ov+=`</div></div>`;
   });
@@ -266,10 +266,10 @@ function varsBody(){
 
 // ============ 页面清单：每页 = 一张 A4 ============
 const PAGES=[
-  { t:'空白探险地图（1 / 2）', s:'每张 5×5 格，留白拼出任何场景。打印后可多印。',
-    b:mapsBody(2,1) },
-  { t:'空白探险地图（2 / 2）', s:'每张 5×5 格，留白拼出任何场景。打印后可多印。',
-    b:mapsBody(2,3) },
+  { t:'空白探险地图（1 / 2）', s:'每张 5×5 格（格子 14mm），留白拼出任何场景。每页 6 张（2 列 × 3 行）。',
+    b:mapsBody(6,1) },
+  { t:'空白探险地图（2 / 2）', s:'每张 5×5 格（格子 14mm），留白拼出任何场景。每页 6 张（2 列 × 3 行）。',
+    b:mapsBody(6,7) },
   { t:'图例贴纸（1 / 2）', s:'每格≈地图一格大小。顶部对照条帮助认图标。可整页多印。',
     b:legendBody(ELEMENTS.slice(0,4)) },
   { t:'图例贴纸（2 / 2）', s:'每格≈地图一格大小。',
