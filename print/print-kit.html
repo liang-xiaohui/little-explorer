@@ -62,8 +62,9 @@
   /* 图例对照条 */
   .overview{ display:grid; grid-template-columns:repeat(4,1fr); gap:2mm 4mm; margin-bottom:3mm; }
   .ov{ display:flex; align-items:center; gap:2mm; border:1px solid var(--line); padding:1.5mm 2mm; }
-  .ov svg{ width:15px; height:15px; flex:none; }
-  .ov .nm{ font-size:10px; font-weight:600; }
+  .ov{ padding:1.5mm 2.5mm; }
+  .ov svg{ width:14mm; height:14mm; flex:none; }
+  .ov .nm{ font-size:12px; font-weight:700; }
 
   /* 贴纸通用 */
   .sticker{ border:1px dashed var(--cut); display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fff; }
@@ -73,6 +74,8 @@
   .legend-row .rh{ font-size:10.5px; font-weight:600; margin-bottom:1mm; }
   .legend-row .rgrid{ display:flex; flex-wrap:wrap; gap:2mm; }
   .legend-row .sticker{ width:14mm; height:14mm; }
+  .legend-row .sticker svg{ width:14mm; height:14mm; }
+  .legend-row .sticker .lbl{ display:none; }
 
   /* 程序动作块：小积木 */
   .prog-wrap{ display:flex; flex-wrap:wrap; gap:2mm; }
