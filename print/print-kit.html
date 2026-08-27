@@ -177,7 +177,7 @@ const ELEMENTS=[
   {k:'gem',nm:'宝石',ds:'收集目标',c:'#EF9F27'},
   {k:'sw',nm:'开关',ds:'踩一下切换开/关',c:'#D85A30'},
   {k:'portal',nm:'传送门',ds:'成对，踩上瞬移',c:'#1D9E75'},
-  {k:'wall',nm:'墙',ds:'不可通行',c:'#5F5E5A'},
+  {k:'wall',nm:'墙',ds:'不可通行',c:'#5F5E5A',n:24},
   {k:'goal',nm:'终点',ds:'到达即胜利',c:'#639922'},
   {k:'start',nm:'起点',ds:'角色出发处',c:'#534AB7'},
 ];
@@ -223,21 +223,22 @@ function legendBody(list){
   let ov='<div class="overview">';
   list.forEach(e=>{ ov+=`<div class="ov">${icon(e.k,e.c)}<span class="nm">${e.nm}</span></div>`; });
   ov+='</div><div class="legend-rows">';
-  list.forEach(e=>{
-    ov+=`<div class="legend-row"><div class="rh">${e.nm}（${e.ds}）</div><div class="rgrid">`;
-    for(let i=0;i<12;i++) ov+=`<div class="sticker">${icon(e.k,e.c)}<span class="lbl">${e.nm}</span></div>`;
-    ov+=`</div></div>`;
+    list.forEach(e=>{
+      ov+=`<div class="legend-row"><div class="rh">${e.nm}（${e.ds}）</div><div class="rgrid">`;
+      const cnt=e.n||12;
+      for(let i=0;i<cnt;i++) ov+=`<div class="sticker">${icon(e.k,e.c)}<span class="lbl">${e.nm}</span></div>`;
+      ov+=`</div></div>`;
   });
   return ov+'</div>';
 }
 function actionsBody(list){
   let s='<div class="prog-wrap">';
-  list.forEach(b=>{ for(let i=0;i<12;i++) s+=`<div class="prog" style="border-color:${b.c};background:${b.c}18">${icon(b.k,b.c)}<span class="pt">${b.short}</span></div>`; });
+  list.forEach(b=>{ for(let i=0;i<14;i++) s+=`<div class="prog" style="border-color:${b.c};background:${b.c}18">${icon(b.k,b.c)}<span class="pt">${b.short}</span></div>`; });
   return s+'</div>';
 }
 function condsBody(list){
   let s='<div class="cond-wrap">';
-  list.forEach(c=>{ for(let i=0;i<8;i++) s+=`<div class="cond" style="border-color:${c.c};color:${c.c}">${c.nm}</div>`; });
+  list.forEach(c=>{ for(let i=0;i<12;i++) s+=`<div class="cond" style="border-color:${c.c};color:${c.c}">${c.nm}</div>`; });
   return s+'</div>';
 }
 function logicBody(){
@@ -257,9 +258,9 @@ function callsBody(n){
 }
 function varsBody(){
   let panel=`<div class="varpanel"><div class="ptitle">变量值面板（铅笔填，运行时改写）</div><div class="varlines">`;
-  for(let i=0;i<6;i++) panel+=`<div class="varline"><span class="lab">变量名</span><span class="nm">&nbsp;</span><span class="lab">= 数值</span><span class="vl">&nbsp;</span></div>`;
+  for(let i=0;i<8;i++) panel+=`<div class="varline"><span class="lab">变量名</span><span class="nm">&nbsp;</span><span class="lab">= 数值</span><span class="vl">&nbsp;</span></div>`;
   panel+=`</div></div><div class="cond-wrap" style="margin-top:4mm">`;
-  for(let i=0;i<12;i++) panel+=`<div class="vartag"><div class="ln">变量名<span class="fill">&nbsp;</span></div><div class="ln">数值<span class="fill">&nbsp;</span></div></div>`;
+  for(let i=0;i<20;i++) panel+=`<div class="vartag"><div class="ln">变量名<span class="fill">&nbsp;</span></div><div class="ln">数值<span class="fill">&nbsp;</span></div></div>`;
   return panel+'</div>';
 }
 
@@ -277,33 +278,28 @@ const PAGES=[
     b:actionsBody(BLOCKS.slice(0,3)) },
   { t:'程序动作块（2 / 2）', s:'按顺序排列 = 执行顺序。',
     b:actionsBody(BLOCKS.slice(3,6)) },
-  { t:'条件药丸（1 / 2）', s:'剪下贴到结构块头部的「贴条件」虚线处。',
-    b:condsBody(CONDS.slice(0,4)) },
-  { t:'条件药丸（2 / 2）+ 逻辑运算', s:'条件药丸 + 逻辑运算符（且/或/非）串接组合条件。',
-    b:condsBody(CONDS.slice(4,7)) + logicBody() },
-  { t:'控制结构·外层（循环 / 当 / 函数）', s:'开口括号：顶部色带 + 左侧虚线作用域 + 底部△结束，不围合、可嵌套。此为「大框」(180mm)。',
+  { t:'条件药丸 + 逻辑运算', s:'条件药丸剪下贴到结构块头部「贴条件」虚线处；逻辑运算符（且/或/非）把多个条件串成组合条件。',
+    b:condsBody(CONDS) + logicBody() },
+  { t:'控制结构·外层①（循环 / 当 / 函数 / 如果）', s:'开口括号：顶部色带 + 左侧虚线作用域 + 底部△结束，不围合、可嵌套。此为「大框」(180mm)。',
     b:controlBody([
       {size:'big',cls:'loop',head:'重复 <span class="gblank">&nbsp;</span> 次',foot:'重复',n:2},
       {size:'big',cls:'while',head:'当 <span class="gcond">贴条件</span> 时 重复',foot:'当',n:1},
       {size:'big',cls:'func',head:'函数 <span class="gblank">&nbsp;</span>',foot:'函数',n:1},
+      {size:'big',cls:'branch',head:'如果 <span class="gcond">贴条件</span>',foot:'如果',n:1},
     ]) },
-  { t:'控制结构·外层（如果 / 否则如果）', s:'分支链：如果 / 否则如果 / 否则 上下拼成 else-if 链，条件处贴条件药丸。此为「大框」(180mm)。',
+  { t:'控制结构·外层②（如果 / 否则如果 / 否则）', s:'分支链：如果 / 否则如果 / 否则 上下拼成 else-if 链，条件处贴条件药丸。此为「大框」(180mm)。',
     b:controlBody([
-      {size:'big',cls:'branch',head:'如果 <span class="gcond">贴条件</span>',foot:'如果',n:2},
+      {size:'big',cls:'branch',head:'如果 <span class="gcond">贴条件</span>',foot:'如果',n:1},
       {size:'big',cls:'branch',head:'否则如果 <span class="gcond">贴条件</span>',foot:'否则如果',n:3},
-    ]) },
-  { t:'控制结构·外层（否则如果 / 否则）+ 调用', s:'分支链收尾 + 函数调用贴纸（定义一次，多处调用）。',
-    b:controlBody([
-      {size:'big',cls:'branch',head:'否则如果 <span class="gcond">贴条件</span>',foot:'否则如果',n:1},
       {size:'big',cls:'branch',head:'否则',foot:'否则',n:1},
-    ]) + callsBody(8) },
-  { t:'控制结构·嵌套用（小框 · 148mm）', s:'嵌套时把「小框」整条贴进大框作用域里（左侧虚线即缩进层级）。',
+    ]) },
+  { t:'控制结构·嵌套用（小框）+ 调用', s:'嵌套时把「小框」整条贴进大框作用域（左侧虚线即缩进层级）；调用贴纸多次调用同一函数。',
     b:controlBody([
-      {size:'small',cls:'loop',head:'重复 <span class="gblank">&nbsp;</span> 次',foot:'重复',n:1},
+      {size:'small',cls:'loop',head:'重复 <span class="gblank">&nbsp;</span> 次',foot:'重复',n:2},
       {size:'small',cls:'while',head:'当 <span class="gcond">贴条件</span> 时 重复',foot:'当',n:1},
       {size:'small',cls:'branch',head:'如果 <span class="gcond">贴条件</span>',foot:'如果',n:1},
       {size:'small',cls:'branch',head:'否则如果 <span class="gcond">贴条件</span>',foot:'否则如果',n:1},
-    ]) },
+    ]) + callsBody(8) },
   { t:'变量部件', s:'变量名贴纸手写名字、贴到结构块旁引用；变量面板用铅笔填值，虚拟运行时改写。',
     b:varsBody() },
 ];
