@@ -75,6 +75,22 @@
   .vartag .ln{ display:flex; align-items:center; gap:1.5mm; }
   .vartag .fill{ flex:1; border-bottom:1px solid var(--ink); min-height:7mm; }
 
+  /* 逻辑运算符贴纸（且/或/非）：深底白字，区别于条件药丸 */
+  .logic{ background:#2b2b2b; color:#fff; border:1.5px solid #2b2b2b; border-radius:6mm; padding:2mm 4mm; font-size:11px; font-weight:700; page-break-inside:avoid; }
+  /* 函数卡（定义一次，可多次调用） */
+  .fncard{ width:160mm; height:78mm; border:2px solid var(--ink); border-radius:8mm; padding:3mm; display:flex; flex-direction:column; background:#fff; page-break-inside:avoid; }
+  .fncard .top{ font-size:15px; font-weight:700; }
+  .fncard .blank{ display:inline-block; min-width:26mm; border-bottom:1.5px solid var(--ink); text-align:center; }
+  .fncard .body{ flex:1; margin-top:3mm; border:1px dotted var(--line); border-radius:4mm; display:flex; align-items:center; justify-content:center; color:#999; font-size:11px; text-align:center; }
+  /* 调用贴纸 */
+  .call{ width:44mm; height:18mm; border:1px solid #534AB7; border-radius:3mm; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; background:#534AB718; color:#534AB7; page-break-inside:avoid; }
+  /* 条件循环框（当…时 重复） */
+  .wloop{ width:160mm; height:92mm; border:2px dashed var(--ink); border-radius:8mm; padding:3mm; display:flex; flex-direction:column; background:#fff; page-break-inside:avoid; }
+  .wloop .top{ font-size:15px; font-weight:700; }
+  .wloop .cond-slot{ display:inline-block; min-width:34mm; border:1px dashed var(--ink); border-radius:6mm; text-align:center; padding:0 2mm; color:#999; }
+  .wloop .body{ flex:1; margin-top:3mm; border:1px dotted var(--line); border-radius:4mm; display:flex; align-items:center; justify-content:center; color:#999; font-size:11px; text-align:center; }
+  .endwhile{ width:42mm; height:18mm; border:1px dashed var(--ink); border-radius:3mm; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; background:#fff; page-break-inside:avoid; }
+
   /* 屏幕说明（打印时隐藏） */
   .screen-only{ background:#fffbe6; border:1px solid #e0c000; padding:10px 14px; margin:12px; border-radius:8px; font-size:13px; line-height:1.7; }
   .screen-only b{ color:#7a5b00; }
@@ -90,7 +106,8 @@
   3. 沿<b>虚线</b>剪下图例贴纸、小动作块、循环大框、分支卡，就是实体积木。<br>
   4. 玩法：空白地图贴图例拼出「探险地图」→ 把小动作块 / 循环框 / 分支卡贴在大纸上拼出「图形程序」→ 按程序移动角色（手指或棋子）。<br>
   5. 网页版（kid-coding-prototype.html）保留，作参考。<br>
-  6. 变量部件：变量名贴纸手写名字、贴到循环框旁引用；变量面板用铅笔填值，虚拟运行时擦改写。
+  6. 变量部件：变量名贴纸手写名字、贴到循环框旁引用；变量面板用铅笔填值，虚拟运行时擦改写。<br>
+  7. 新增控制件：<b>条件循环框</b>（当[条件]成立反复执行，配结束重复）、<b>函数卡</b>（定义一次，用「调用」贴纸多次调用）、<b>逻辑运算符</b>贴纸（且/或/非，串接条件药丸）、<b>扩展条件</b>（开关关着 / 左侧有墙）。对应 Swift Playgrounds 的 while / func / && || !。
 </div>
 
 <div id="kit"></div>
@@ -138,8 +155,16 @@ const CONDS=[
   {nm:'前方有宝石',c:'#EF9F27'},
   {nm:'前方有墙',c:'#5F5E5A'},
   {nm:'开关开着',c:'#D85A30'},
+  {nm:'开关关着',c:'#7A4A30'},
   {nm:'脚下是宝石',c:'#EF9F27'},
+  {nm:'左侧有墙',c:'#5F5E5A'},
   {nm:'在传送门上',c:'#1D9E75'},
+];
+// 逻辑运算符贴纸：把多个条件药丸串成组合条件
+const LOGIC=[
+  {nm:'且',c:'#2b2b2b'},
+  {nm:'或',c:'#2b2b2b'},
+  {nm:'非',c:'#2b2b2b'},
 ];
 function bif(lab,noCond){
   return `<div class="bcard"><div class="spine"></div><div class="main"><div class="lab">${lab}</div>`
@@ -187,18 +212,34 @@ kit.insertAdjacentHTML('beforeend',s3);
 let s6=`<section><h2 class="title">条件贴纸（药丸，贴到分支卡顶部）</h2>
 <p class="sub">剪下贴到「如果 / 否则如果」的条件处。</p><div class="cond-wrap">`;
 CONDS.forEach(c=>{ for(let i=0;i<10;i++) s6+=`<div class="cond" style="border-color:${c.c};color:${c.c}">${c.nm}</div>`; });
+s6+=`</div>
+<p class="sub" style="margin-top:5mm">逻辑运算符贴纸：把多个条件药丸串成组合条件（如「脚下是宝石」<b>且</b>「前方有墙」）。</p>
+<div class="cond-wrap">`;
+LOGIC.forEach(l=>{ for(let i=0;i<8;i++) s6+=`<div class="logic">${l.nm}</div>`; });
 s6+=`</div></section>`;
 kit.insertAdjacentHTML('beforeend',s6);
 
 // ---- 控制结构：循环 + 分支链（单独成页） ----
-let s5=`<section class="ctrl"><h2 class="title">控制结构：循环 + 分支链</h2>
-<p class="sub">循环框填次数，把动作块贴进中间；分支卡上下拼成 else-if 链，条件处贴条件药丸。</p><div class="frames">`;
+let s5=`<section class="ctrl"><h2 class="title">控制结构：循环 + 分支链 + 条件循环 + 函数</h2>
+<p class="sub">循环框填次数；分支卡上下拼成 else-if 链；条件循环框贴条件、反复执行；函数卡定义一次、用「调用」贴纸多次调用。条件处贴条件药丸，可用逻辑运算符组合。</p><div class="frames">`;
 for(let i=0;i<4;i++) s5+=`<div class="loop"><div class="top">重复 <span class="blank">&nbsp;</span> 次</div><div class="body">把要重复的动作块贴在这里</div></div>`;
 for(let i=0;i<8;i++) s5+=`<div class="endloop">结束重复</div>`;
 s5+=`</div><div class="branch-strip">`;
 for(let i=0;i<3;i++) s5+=bif('如果');
 for(let i=0;i<8;i++) s5+=bif('否则如果');
 for(let i=0;i<4;i++) s5+=bif('否则',true);
+s5+=`</div>
+<div class="frames" style="margin-top:6mm">
+  <h3 style="width:100%;font-size:13px;margin:0 0 2mm">条件循环框（当 条件 成立时反复执行）</h3>`;
+for(let i=0;i<2;i++) s5+=`<div class="wloop"><div class="top">当 <span class="cond-slot">贴条件</span> 时 重复</div><div class="body">把要重复的动作块贴在这里</div></div>`;
+for(let i=0;i<4;i++) s5+=`<div class="endwhile">结束重复</div>`;
+s5+=`</div>
+<div class="frames" style="margin-top:6mm">
+  <h3 style="width:100%;font-size:13px;margin:0 0 2mm">函数卡（定义一次，可多次调用）</h3>`;
+for(let i=0;i<2;i++) s5+=`<div class="fncard"><div class="top">函数 <span class="blank">&nbsp;</span></div><div class="body">把要复用的动作块贴在这里</div></div>`;
+s5+=`</div>
+<div class="cond-wrap" style="margin-top:3mm">`;
+for(let i=0;i<8;i++) s5+=`<div class="call">调用 ____</div>`;
 s5+=`</div></section>`;
 kit.insertAdjacentHTML('beforeend',s5);
 

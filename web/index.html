@@ -50,20 +50,23 @@
     border-right:6px solid transparent;border-bottom:9px solid #e8e8ec;}
   .cell.here{background:#2d3550;}
   /* program */
-  .prog-panel{width:340px;}
-  .blocks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+  .prog-panel{width:420px;}
+  .targetbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .targetbar label{font-size:12px;color:var(--muted);}
+  .targetbar select{padding:6px 8px;border-radius:8px;background:var(--panel2);color:var(--text);border:1px solid var(--line);}
+  .bgroup{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
+  .bgroup .glabel{width:100%;font-size:11px;color:var(--muted);margin:2px 0 -2px;}
   .badd{padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);
     cursor:pointer;font-size:12px;color:var(--text);}
   .badd:hover{border-color:var(--blue);}
   .program{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
     min-height:120px;padding:10px;display:flex;flex-direction:column;gap:6px;}
-  .pblock{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;
-    border-radius:8px;font-size:13px;}
+  .pblock{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;
+    border-radius:8px;font-size:13px;border-left:3px solid var(--gray);}
   .pblock .del{cursor:pointer;color:var(--muted);font-size:14px;padding:0 4px;}
-  .pblock.loop{border:1px dashed var(--teal);}
-  .pblock.endloop{border:1px dashed var(--gray);}
+  .pblock .del:hover{color:var(--coral);}
   .empty-hint{color:var(--muted);font-size:12px;text-align:center;padding:30px 0;}
-  .ctrls{display:flex;gap:8px;margin-top:12px;}
+  .ctrls{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
   .btn{padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);
     color:var(--text);cursor:pointer;font-size:13px;}
   .btn.run{background:var(--blue);border-color:var(--blue);}
@@ -78,7 +81,7 @@
 <body>
 <header>
   <h1>小小探险家 · 图形编程原型</h1>
-  <p>左边用"贴纸"画地图，右边拼图形程序，点运行看小人走。零文本代码。</p>
+  <p>左边画地图，右边拼图形程序（支持 循环 / 条件循环 / 分支 / 函数），点运行看小人走。零文本代码。</p>
 </header>
 
 <div class="wrap">
@@ -95,12 +98,18 @@
   <!-- 程序面板 -->
   <div class="panel prog-panel">
     <h2>2 · 拼图形程序</h2>
-    <div class="blocks" id="blockBtns"></div>
+    <div class="targetbar">
+      <label>编辑目标：</label>
+      <select id="targetSel"></select>
+      <button class="btn" id="newFnBtn">+ 新建函数</button>
+    </div>
+    <div class="bgroup" id="blockBtns"></div>
     <div class="program" id="program"><div class="empty-hint">还没有指令，点上面的按钮添加</div></div>
     <div class="ctrls">
       <button class="btn run" id="runBtn">运行</button>
       <button class="btn" id="resetBtn">重置</button>
-      <button class="btn" id="demoBtn">载入示例</button>
+      <button class="btn" id="demoBtn">载入示例1</button>
+      <button class="btn" id="demo2Btn">载入示例2(循环+条件)</button>
       <button class="btn" id="clearBtn">清地图</button>
     </div>
     <div class="status" id="status"></div>
@@ -119,55 +128,37 @@ const PALETTE=[
   {k:'goal',name:'终点',c:'#639922'},
   {k:'start',name:'设起点',c:'#534ab7'},
 ];
-const BLOCKS=[
-  {t:'forward',name:'前进',c:'#378add'},
-  {t:'turnLeft',name:'左转',c:'#534ab7'},
-  {t:'turnRight',name:'右转',c:'#534ab7'},
-  {t:'collect',name:'收集宝石',c:'#ef9f27'},
-  {t:'toggle',name:'切换开关',c:'#d85a30'},
-  {t:'jump',name:'跳',c:'#1d9e75'},
-  {t:'loop',name:'重复 N 次',c:'#1d9e75'},
-  {t:'endloop',name:'结束重复',c:'#5f5e5a'},
-];
 const DIRS=[[0,-1],[1,0],[0,1],[-1,0]]; // N E S W ; [dx,dy]
 
-let map, hero, selected='select', program=[];
+// 条件谓词（对齐 Swift：isOnGem / isOnClosedSwitch / isBlocked 等）
+const CONDS=[
+  {nm:'脚下是宝石',kind:'onGem'},
+  {nm:'前方有宝石',kind:'frontGem'},
+  {nm:'前方有墙',kind:'frontWall'},
+  {nm:'开关开着',kind:'switchOn'},
+  {nm:'开关关着',kind:'switchOff'},
+  {nm:'在传送门上',kind:'onPortal'},
+  {nm:'左侧有墙',kind:'leftWall'},
+];
+
+// 程序目标：主程序 + 若干函数
+let targets=[{name:'__main',label:'主程序',body:[]}];
+let curTarget='__main';
+let insertPos=0; // 下一个块插入位置（保持嵌套直观：新块插到最内层未闭合结构里）
+function curBody(){ return targets.find(t=>t.name===curTarget).body; }
+function mainBody(){ return targets.find(t=>t.name==='__main').body; }
+
+let map, hero, selected='select';
 function initMap(){ map=Array.from({length:N},()=>Array.from({length:N},()=>({type:EMPTY,on:false})));
   hero={x:0,y:N-1,dir:1}; renderMap(); }
 
+// ---------- 渲染：地图 / 调色板 ----------
 function renderPalette(){
   const el=document.getElementById('palette'); el.innerHTML='';
   PALETTE.forEach(p=>{
     const d=document.createElement('div'); d.className='pal'+(selected===p.k?' active':'');
     d.innerHTML=`<span class="sw" style="background:${p.c}"></span>${p.name}`;
     d.onclick=()=>{selected=p.k;renderPalette();};
-    el.appendChild(d);
-  });
-}
-function renderBlockBtns(){
-  const el=document.getElementById('blockBtns'); el.innerHTML='';
-  BLOCKS.forEach(b=>{
-    const d=document.createElement('button'); d.className='badd';
-    d.textContent=b.name; d.style.borderLeft=`3px solid ${b.c}`;
-    d.onclick=()=>{
-      const item={t:b.t};
-      if(b.t==='loop'){ const n=prompt('重复几次？',3); item.n=Math.max(1,parseInt(n)||1); }
-      program.push(item); renderProgram();
-    };
-    el.appendChild(d);
-  });
-}
-function renderProgram(){
-  const el=document.getElementById('program'); el.innerHTML='';
-  if(program.length===0){el.innerHTML='<div class="empty-hint">还没有指令，点上面的按钮添加</div>';return;}
-  program.forEach((it,i)=>{
-    const b=BLOCKS.find(x=>x.t===it.t);
-    const d=document.createElement('div');
-    d.className='pblock'+(it.t==='loop'?' loop':it.t==='endloop'?' endloop':'');
-    d.style.background=b.c+'22';
-    const label=it.t==='loop'?`重复 ${it.n} 次`:b.name;
-    d.innerHTML=`<span>${label}</span><span class="del" data-i="${i}">×</span>`;
-    d.querySelector('.del').onclick=()=>{program.splice(i,1);renderProgram();};
     el.appendChild(d);
   });
 }
@@ -200,48 +191,216 @@ function onCell(x,y){
   else {c.type=selected;c.on=false;}
   renderMap();
 }
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+// ---------- 条件解析 ----------
+function parseCond(str){
+  if(str===null) return null;
+  let s=str.trim(); if(!s) return null;
+  const join = s.includes('或') ? 'or' : 'and';
+  const parts = s.split(/且|或/).map(x=>x.trim()).filter(Boolean);
+  const items=[];
+  for(const p of parts){
+    let neg=false, q=p;
+    if(q.startsWith('非')){ neg=true; q=q.slice(1).trim(); }
+    const c=CONDS.find(c=>c.nm===q);
+    if(c) items.push({neg,kind:c.kind});
+  }
+  return items.length?{join,items}:null;
+}
+function condText(cond){
+  if(!cond) return '（无条件）';
+  return cond.items.map(it=>(it.neg?'非':'')+CONDS.find(c=>c.kind===it.kind).nm)
+                   .join(cond.join==='or'?' 或 ':' 且 ');
+}
+function promptForCond(label){
+  const list=CONDS.map((c,i)=>`${i+1}. ${c.nm}`).join('\n');
+  const hint=`输入条件：用「且」「或」连接多个，「非」取反。\n例如：脚下是宝石 且 非 前方有墙\n\n可选条件：\n${list}`;
+  while(true){
+    const s=prompt(label+'\n'+hint);
+    if(s===null) return null;
+    const c=parseCond(s);
+    if(c) return c;
+    alert('没看懂这个条件，再试一次（或直接取消）');
+  }
+}
+
+// ---------- 程序块按钮 ----------
+const COLOR={forward:'#378add',turnLeft:'#534ab7',turnRight:'#534ab7',collect:'#ef9f27',
+  toggle:'#d85a30',jump:'#1d9e75',loop:'#1d9e75',while:'#1d9e75',if:'#534ab7',
+  elseif:'#534ab7',else:'#534ab7',endif:'#5f5e5a',endloop:'#5f5e5a',endwhile:'#5f5e5a',call:'#d85a30'};
+const NAMES={forward:'前进',turnLeft:'左转',turnRight:'右转',collect:'收集宝石',toggle:'切换开关',jump:'跳',
+  loop:'重复 N 次',while:'当…时 重复',if:'如果',elseif:'否则如果',else:'否则',endif:'结束如果',
+  endloop:'结束重复',endwhile:'结束当',call:'调用'};
+function colorFor(t){ return COLOR[t]||'#5f5e5a'; }
+function blockLabel(it){
+  if(it.t==='loop')return `重复 ${it.n} 次`;
+  if(it.t==='while')return `当 ${condText(it.cond)} 时 重复`;
+  if(it.t==='if')return `如果 ${condText(it.cond)}`;
+  if(it.t==='elseif')return `否则如果 ${condText(it.cond)}`;
+  if(it.t==='else')return '否则';
+  if(it.t==='endif')return '结束如果';
+  if(it.t==='endloop')return '结束重复';
+  if(it.t==='endwhile')return '结束当';
+  if(it.t==='call')return `调用 ${it.name}`;
+  return NAMES[it.t]||it.t;
+}
+function renderBlockBtns(){
+  const el=document.getElementById('blockBtns'); el.innerHTML='';
+  const groups=[
+    {label:'动作',items:[
+      {t:'forward'},{t:'turnLeft'},{t:'turnRight'},{t:'collect'},{t:'toggle'},{t:'jump'}]},
+    {label:'循环 / 条件循环',items:[
+      {t:'loop',ask:'重复几次？',def:3},{t:'while'}]},
+    {label:'分支（可拼 else-if 链）',items:[
+      {t:'if'},{t:'elseif'},{t:'else'},{t:'endif'}]},
+    {label:'函数',items:[{t:'call'}]},
+  ];
+  groups.forEach(g=>{
+    const lab=document.createElement('div'); lab.className='glabel'; lab.textContent=g.label; el.appendChild(lab);
+    g.items.forEach(it=>{
+      const d=document.createElement('button'); d.className='badd';
+      d.textContent=NAMES[it.t]; d.style.borderLeft=`3px solid ${colorFor(it.t)}`;
+      d.onclick=()=>onAddBlock(it);
+      el.appendChild(d);
+    });
+  });
+}
+function onAddBlock(it){
+  if(it.t==='loop'){ const n=parseInt(prompt(it.ask||'重复几次？',it.def||3)); if(isNaN(n)||n<1) return; addBlock({t:'loop',n:Math.max(1,n)}); }
+  else if(it.t==='while'){ const c=promptForCond('当…时（条件成立就反复执行）'); if(!c) return; addBlock({t:'while',cond:c}); }
+  else if(it.t==='if'){ const c=promptForCond('如果（条件成立就执行）'); if(!c) return; addBlock({t:'if',cond:c}); }
+  else if(it.t==='elseif'){ const c=promptForCond('否则如果（上一个不成立、这个成立才执行）'); if(!c) return; addBlock({t:'elseif',cond:c}); }
+  else if(it.t==='else'){ addBlock({t:'else'}); }
+  else if(it.t==='endif'){ addBlock({t:'endif'}); }
+  else if(it.t==='call'){ const name=prompt('调用哪个函数？输入函数名：'); if(!name||!name.trim()) return; addBlock({t:'call',name:name.trim()}); }
+  else { addBlock({t:it.t}); }
+}
+function addBlock(item){
+  const b=curBody();
+  insertPos=Math.min(insertPos,b.length);
+  b.splice(insertPos,0,item);
+  insertPos++; // 下一个块插到当前块之后：开结构则进入内部，闭合/叶则在同层
+  renderProgram();
+}
+function deleteBlock(i){
+  const b=curBody(); const it=b[i];
+  const openClose={loop:'endloop',while:'endwhile',if:'endif'};
+  const closeOpen={endloop:'loop',endwhile:'while',endif:'if'};
+  if(openClose[it.t]){ // 删除开结构 + 匹配闭合
+    let depth=0,j=i; const close=openClose[it.t];
+    for(;j<b.length;j++){ if(b[j].t===it.t)depth++; else if(b[j].t===close){depth--; if(depth===0)break;} }
+    if(j<b.length){ b.splice(j,1); } b.splice(i,1);
+  } else if(closeOpen[it.t]){ // 删除闭合 + 匹配开结构
+    let depth=0,j=i; const open=closeOpen[it.t];
+    for(;j>=0;j--){ if(b[j].t===it.t)depth++; else if(b[j].t===open){depth--; if(depth===0)break;} }
+    if(j>=0){ b.splice(j,1); } b.splice(i,1);
+  } else { b.splice(i,1); }
+  insertPos=b.length; renderProgram();
+}
+function renderProgram(){
+  const el=document.getElementById('program'); el.innerHTML='';
+  const b=curBody();
+  if(b.length===0){el.innerHTML='<div class="empty-hint">还没有指令，点上面的按钮添加</div>';return;}
+  let depth=0;
+  b.forEach((it,i)=>{
+    const d=document.createElement('div'); d.className='pblock';
+    d.style.marginLeft=(depth*14)+'px';
+    d.style.background=colorFor(it.t)+'22';
+    d.style.borderLeftColor=colorFor(it.t);
+    d.innerHTML=`<span>${blockLabel(it)}</span><span class="del" data-i="${i}">×</span>`;
+    d.querySelector('.del').onclick=()=>deleteBlock(i);
+    el.appendChild(d);
+    if(['loop','while','if'].includes(it.t))depth++;
+    else if(['endloop','endwhile','endif'].includes(it.t))depth=Math.max(0,depth-1);
+  });
+}
+function renderTargets(){
+  const sel=document.getElementById('targetSel'); sel.innerHTML='';
+  targets.forEach(t=>{ const o=document.createElement('option'); o.value=t.name; o.textContent=t.label; sel.appendChild(o); });
+  sel.value=curTarget;
+}
+function curIsMain(){ return curTarget==='__main'; }
+
+// ---------- 解释器核心（与离线测试一致） ----------
+const cellAt=(x,y)=> (x<0||y<0||x>=N||y>=N)?{type:'wall',on:false}:map[y][x];
 function portalTarget(x,y){
   if(map[y][x].type!=='portalA')return null;
   for(let yy=0;yy<N;yy++)for(let xx=0;xx<N;xx++)
     if((xx!==x||yy!==y)&&map[yy][xx].type==='portalA')return{x:xx,y:yy};
   return null;
 }
-async function run(){
-  document.getElementById('status').innerHTML='';
-  let h={...hero}; let step=0;
-  const stack=[]; // {loopIdx,count}
-  let i=0;
-  while(i<program.length){
-    const it=program[i]; step++;
-    const [dx,dy]=DIRS[h.dir];
-    if(it.t==='forward'){
-      const nx=h.x+dx, ny=h.y+dy;
-      if(nx<0||ny<0||nx>=N||ny>=N||map[ny][nx].type==='wall'){ await fail(`第 ${step} 步：前方是墙或边界，撞上了`); return; }
-      h.x=nx;h.y=ny;
-      const tgt=portalTarget(h.x,h.y);
-      if(tgt){h.x=tgt.x;h.y=tgt.y;}
-    } else if(it.t==='jump'){
-      const nx=h.x+dx, ny=h.y+dy;
-      if(nx>=0&&ny>=0&&nx<N&&ny<N&&map[ny][nx].type==='wall'){h.x=nx;h.y=ny;}
-      else if(nx>=0&&ny>=0&&nx<N&&ny<N){h.x=nx;h.y=ny;} // simple: jump over one cell
-    } else if(it.t==='turnLeft'){h.dir=(h.dir+3)%4;}
-      else if(it.t==='turnRight'){h.dir=(h.dir+1)%4;}
-      else if(it.t==='collect'){ if(map[h.y][h.x].type==='gem'){map[h.y][h.x].type=EMPTY;} }
-      else if(it.t==='toggle'){ if(map[h.y][h.x].type==='switch'){map[h.y][h.x].on=!map[h.y][h.x].on;} }
-      else if(it.t==='loop'){ stack.push({idx:i,count:it.n-1}); }
-      else if(it.t==='endloop'){
-        const top=stack[stack.length-1];
-        if(top&&top.count>0){top.count--; i=top.idx+1; renderHero(h,step); await sleep(300); continue;}
-        else stack.pop();
-      }
-    renderHero(h,step); await sleep(300);
-    i++;
+function pred(kind,h){
+  const [dx,dy]=DIRS[h.dir]; const fx=h.x+dx, fy=h.y+dy;
+  const left=(h.dir+3)%4; const [lx,ly]=DIRS[left]; const lx2=h.x+lx, ly2=h.y+ly;
+  switch(kind){
+    case 'onGem': return cellAt(h.x,h.y).type==='gem';
+    case 'frontGem': return cellAt(fx,fy).type==='gem';
+    case 'frontWall': return cellAt(fx,fy).type==='wall';
+    case 'switchOn': {const c=cellAt(h.x,h.y); return c.type==='switch'&&c.on;}
+    case 'switchOff': {const c=cellAt(h.x,h.y); return c.type==='switch'&&!c.on;}
+    case 'onPortal': return cellAt(h.x,h.y).type==='portalA';
+    case 'leftWall': return cellAt(lx2,ly2).type==='wall';
   }
-  checkWin(h);
+  return false;
+}
+function evalCond(cond,h){
+  if(!cond) return true;
+  const res=cond.items.map(it=>{ const v=pred(it.kind,h); return it.neg?!v:v; });
+  return cond.join==='or'? res.some(Boolean) : res.every(Boolean);
+}
+function buildTree(list){
+  const root=[]; const stack=[root]; const ifStack=[];
+  for(const it of list){
+    if(it.t==='loop'){ const node={type:'loop',n:it.n,body:[]}; stack[stack.length-1].push(node); stack.push(node.body); continue; }
+    if(it.t==='endloop'){ if(stack.length>1) stack.pop(); continue; }
+    if(it.t==='while'){ const node={type:'while',cond:it.cond,body:[]}; stack[stack.length-1].push(node); stack.push(node.body); continue; }
+    if(it.t==='endwhile'){ if(stack.length>1) stack.pop(); continue; }
+    if(it.t==='if'){ const node={type:'if',branches:[{cond:it.cond,body:[]}],elseBody:null}; stack[stack.length-1].push(node); ifStack.push(node); stack.push(node.branches[0].body); continue; }
+    if(it.t==='elseif'){ if(ifStack.length){ const top=ifStack[ifStack.length-1]; const b={cond:it.cond,body:[]}; top.branches.push(b); if(stack.length>1)stack.pop(); stack.push(b.body);} else stack[stack.length-1].push(it); continue; }
+    if(it.t==='else'){ if(ifStack.length){ const top=ifStack[ifStack.length-1]; const b=[]; top.elseBody=b; if(stack.length>1)stack.pop(); stack.push(b);} else stack[stack.length-1].push(it); continue; }
+    if(it.t==='endif'){ if(ifStack.length)ifStack.pop(); if(stack.length>1)stack.pop(); continue; }
+    stack[stack.length-1].push(it);
+  }
+  return root;
+}
+function doAction(it,h){
+  const [dx,dy]=DIRS[h.dir];
+  if(it.t==='forward'){
+    const nx=h.x+dx, ny=h.y+dy; const c=cellAt(nx,ny);
+    if(c.type==='wall'||nx<0||ny<0||nx>=N||ny>=N){ h.fail=true; h.msg=`前方是墙或边界，撞上了`; return; }
+    h.x=nx; h.y=ny; const t=portalTarget(h.x,h.y); if(t){h.x=t.x;h.y=t.y;}
+  } else if(it.t==='jump'){
+    const nx=h.x+dx, ny=h.y+dy; const c=cellAt(nx,ny);
+    if(c.type==='wall'||(nx>=0&&ny>=0&&nx<N&&ny<N)){ h.x=nx; h.y=ny; }
+  } else if(it.t==='turnLeft'){ h.dir=(h.dir+3)%4; }
+    else if(it.t==='turnRight'){ h.dir=(h.dir+1)%4; }
+    else if(it.t==='collect'){ if(map[h.y][h.x].type==='gem') map[h.y][h.x].type=EMPTY; }
+    else if(it.t==='toggle'){ if(map[h.y][h.x].type==='switch') map[h.y][h.x].on=!map[h.y][h.x].on; }
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function execTree(list,h,depth,step){
+  for(const node of list){
+    if(h.fail) return;
+    if(node.type==='loop'){ for(let r=0;r<node.n;r++){ if(h.fail)break; await execTree(node.body,h,depth+1,step); } }
+    else if(node.type==='while'){ let g=0; while(evalCond(node.cond,h)&&g<300&&!h.fail){ await execTree(node.body,h,depth+1,step); g++; } }
+    else if(node.type==='if'){ let taken=false; for(const b of node.branches){ if(!taken&&evalCond(b.cond,h)){ await execTree(b.body,h,depth+1,step); taken=true; } } if(!taken&&node.elseBody) await execTree(node.elseBody,h,depth+1,step); }
+    else if(node.t==='call'){ const fn=targets.find(t=>t.name===node.name&&t.name!=='__main'); if(fn) await execTree(buildTree(fn.body),h,depth+1,step); else { h.fail=true; h.msg=`找不到函数：${node.name}`; } }
+    else { doAction(node,h); step.n++; renderHero(h,step.n); await sleep(280); if(h.fail) return; }
+  }
 }
 function renderHero(h,step){ hero.x=h.x;hero.y=h.y;hero.dir=h.dir; renderMap(step); }
-function fail(msg){ document.getElementById('status').innerHTML=`<span class="bad">${msg}</span>`; }
+
+// ---------- 运行 / 胜负 ----------
+async function run(){
+  const status=document.getElementById('status'); status.innerHTML='';
+  const b=mainBody();
+  if(b.length===0){ status.innerHTML='<span class="bad">主程序为空，先拼几条指令（或用「调用」调用函数）。</span>'; return; }
+  const h={...hero}; h.fail=false; h.msg='';
+  const step={n:0};
+  await execTree(buildTree(b),h,0,step);
+  if(h.fail){ status.innerHTML=`<span class="bad">${h.msg}（第 ${step.n} 步）</span>`; renderHero(h); return; }
+  checkWin(h);
+}
 function checkWin(h){
   let gems=0,swOff=0;
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){
@@ -253,29 +412,62 @@ function checkWin(h){
   if(gems>0)msg+=`还剩 ${gems} 颗宝石没收。`;
   if(swOff>0)msg+=`还有 ${swOff} 个开关没开。`;
   if(!atGoal)msg+='没到终点。';
-  if(msg==='')document.getElementById('status').innerHTML='<span class="ok">胜利！全部完成 🎉</span>'.replace('🎉','');
-  else document.getElementById('status').innerHTML=`<span class="bad">还没赢：${msg}</span>`;
+  const status=document.getElementById('status');
+  if(msg==='')status.innerHTML='<span class="ok">胜利！全部完成 🎉</span>';
+  else status.innerHTML=`<span class="bad">还没赢：${msg}</span>`;
 }
-function loadDemo(){
+
+// ---------- 示例 ----------
+function setTargets(mainBody, fns){
+  targets=[{name:'__main',label:'主程序',body:mainBody}];
+  (fns||[]).forEach(f=>targets.push({name:f.name,label:'函数：'+f.name,body:f.body}));
+  curTarget='__main'; insertPos=mainBody.length; renderTargets(); renderProgram();
+}
+function loadDemo1(){
   initMap();
-  // 示例关卡：左下出发，收宝石、过传送门、到右上
-  map[7][2].type='gem'; map[5][4].type='gem';
-  map[4][2].type='portalA'; map[3][5].type='portalA';
-  map[5][3].type='switch'; map[1][6].type='goal';
+  map[7][2].type='gem';                                   // (2,7) 宝石
+  map[7][4].type='portalA'; map[3][4].type='portalA';      // (4,7)↔(4,3) 传送门
+  map[3][5].type='switch';                                // (5,3) 开关(关)
+  map[3][6].type='goal';                                  // (6,3) 终点
   hero={x:0,y:7,dir:1};
-  program=[
-    {t:'forward'},{t:'forward'},{t:'collect'},
-    {t:'turnLeft'},{t:'forward'},{t:'forward'},{t:'toggle'},
-    {t:'turnRight'},{t:'forward'},{t:'forward'}, // 踏入传送门A -> 传送到 (5,3)
-    {t:'forward'},{t:'turnLeft'},{t:'forward'},{t:'forward'},{t:'forward'},{t:'forward'},
-  ];
-  renderProgram(); renderMap();
+  setTargets([
+    {t:'forward'},{t:'forward'},{t:'collect'},            // 走到(2,7)收宝石
+    {t:'forward'},{t:'forward'},                          // 走到(4,7)踩传送门→(4,3)
+    {t:'forward'},{t:'toggle'},                           // 走到(5,3)拨开关
+    {t:'forward'},                                        // 走到(6,3)终点
+  ]);
+  document.getElementById('status').innerHTML='';
 }
+function loadDemo2(){
+  initMap();
+  map[7][3].type='gem'; map[7][5].type='switch'; map[7][7].type='goal';  // (3,7)宝石 (5,7)开关 (7,7)终点
+  hero={x:0,y:7,dir:1};
+  setTargets([
+    {t:'loop',n:7},
+      {t:'forward'},
+      {t:'if',cond:{join:'and',items:[{neg:false,kind:'onGem'}]}},{t:'collect'},{t:'endif'},
+      {t:'if',cond:{join:'and',items:[{neg:false,kind:'switchOff'}]}},{t:'toggle'},{t:'endif'},
+    {t:'endloop'},
+  ]);
+  document.getElementById('status').innerHTML='';
+}
+
+// ---------- 绑定 ----------
 document.getElementById('runBtn').onclick=run;
 document.getElementById('resetBtn').onclick=()=>{renderMap();document.getElementById('status').innerHTML='';};
-document.getElementById('demoBtn').onclick=loadDemo;
+document.getElementById('demoBtn').onclick=loadDemo1;
+document.getElementById('demo2Btn').onclick=loadDemo2;
 document.getElementById('clearBtn').onclick=()=>initMap();
-renderPalette(); renderBlockBtns(); initMap();
+document.getElementById('newFnBtn').onclick=()=>{
+  const n=prompt('函数名（如 前进三步）：'); if(!n||!n.trim())return;
+  const name=n.trim();
+  if(targets.some(t=>t.name===name)){ alert('名字重复'); return; }
+  targets.push({name,label:'函数：'+name,body:[]});
+  curTarget=name; insertPos=0; renderTargets(); renderProgram();
+};
+document.getElementById('targetSel').onchange=e=>{ curTarget=e.target.value; insertPos=curBody().length; renderProgram(); };
+
+renderPalette(); renderBlockBtns(); renderTargets(); initMap();
 </script>
 </body>
 </html>
