@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小小探险家 · 图形编程原型</title>
+<style>
+  :root{
+    --bg:#1b1b22; --panel:#23232c; --panel2:#2c2c36; --line:#3a3a44;
+    --text:#e8e8ec; --muted:#9a9aa2; --blue:#378add; --purple:#534ab7;
+    --amber:#ef9f27; --coral:#d85a30; --teal:#1d9e75; --green:#639922;
+    --gray:#5f5e5a;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:14px;}
+  header{padding:16px 20px;border-bottom:1px solid var(--line);}
+  header h1{margin:0;font-size:18px;font-weight:500;}
+  header p{margin:4px 0 0;color:var(--muted);font-size:12px;}
+  .wrap{display:flex;gap:16px;padding:16px 20px;flex-wrap:wrap;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  .panel h2{margin:0 0 10px;font-size:14px;font-weight:500;}
+  /* palette */
+  .palette{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;max-width:380px;}
+  .pal{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:8px;
+    background:var(--panel2);border:1px solid var(--line);cursor:pointer;font-size:12px;}
+  .pal.active{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue);}
+  .sw{width:16px;height:16px;border-radius:4px;}
+  /* grid */
+  .grid{display:grid;grid-template-columns:repeat(8,42px);grid-template-rows:repeat(8,42px);
+    gap:2px;background:var(--line);border:2px solid var(--line);border-radius:8px;overflow:hidden;}
+  .cell{background:#26262f;display:flex;align-items:center;justify-content:center;
+    position:relative;cursor:pointer;font-size:18px;user-select:none;}
+  .cell:hover{background:#30303c;}
+  .cell.wall{background:#444441;}
+  .gem{width:20px;height:20px;background:var(--amber);transform:rotate(45deg);border-radius:3px;}
+  .sw-on{width:18px;height:18px;border-radius:50%;background:var(--coral);}
+  .sw-off{width:18px;height:18px;border-radius:50%;background:#5a3a30;border:2px solid var(--coral);}
+  .portal{width:22px;height:22px;border-radius:50%;background:var(--teal);
+    box-shadow:inset 0 0 0 4px #0f6e56;display:flex;align-items:center;justify-content:center;
+    color:#e1f5ee;font-size:11px;font-weight:600;}
+  .goal{width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;
+    border-bottom:18px solid var(--green);}
+  .start-mark{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--purple);
+    top:3px;left:3px;}
+  .hero{position:absolute;width:30px;height:30px;border-radius:50%;background:var(--blue);
+    display:flex;align-items:center;justify-content:center;transition:all .25s;}
+  .hero::after{content:"";position:absolute;top:-6px;border-left:6px solid transparent;
+    border-right:6px solid transparent;border-bottom:9px solid #e8e8ec;}
+  .cell.here{background:#2d3550;}
+  /* program */
+  .prog-panel{width:340px;}
+  .blocks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+  .badd{padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);
+    cursor:pointer;font-size:12px;color:var(--text);}
+  .badd:hover{border-color:var(--blue);}
+  .program{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    min-height:120px;padding:10px;display:flex;flex-direction:column;gap:6px;}
+  .pblock{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;
+    border-radius:8px;font-size:13px;}
+  .pblock .del{cursor:pointer;color:var(--muted);font-size:14px;padding:0 4px;}
+  .pblock.loop{border:1px dashed var(--teal);}
+  .pblock.endloop{border:1px dashed var(--gray);}
+  .empty-hint{color:var(--muted);font-size:12px;text-align:center;padding:30px 0;}
+  .ctrls{display:flex;gap:8px;margin-top:12px;}
+  .btn{padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);
+    color:var(--text);cursor:pointer;font-size:13px;}
+  .btn.run{background:var(--blue);border-color:var(--blue);}
+  .btn:hover{filter:brightness(1.1);}
+  .status{margin-top:12px;font-size:13px;line-height:1.6;}
+  .status .ok{color:var(--teal);}
+  .status .bad{color:var(--coral);}
+  .legend{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.7;}
+  .num{position:absolute;bottom:1px;right:2px;font-size:9px;color:var(--muted);}
+</style>
+</head>
+<body>
+<header>
+  <h1>小小探险家 · 图形编程原型</h1>
+  <p>左边用"贴纸"画地图，右边拼图形程序，点运行看小人走。零文本代码。</p>
+</header>
+
+<div class="wrap">
+  <!-- 地图面板 -->
+  <div class="panel">
+    <h2>1 · 画地图（贴纸式）</h2>
+    <div class="palette" id="palette"></div>
+    <div class="grid" id="grid"></div>
+    <div class="legend">
+      蓝点是角色起点 · 黄菱形=宝石 · 橙圈=开关(点一下拨动) · 青圈=传送门(成对 A↔A) · 绿三角=终点 · 灰块=墙
+    </div>
+  </div>
+
+  <!-- 程序面板 -->
+  <div class="panel prog-panel">
+    <h2>2 · 拼图形程序</h2>
+    <div class="blocks" id="blockBtns"></div>
+    <div class="program" id="program"><div class="empty-hint">还没有指令，点上面的按钮添加</div></div>
+    <div class="ctrls">
+      <button class="btn run" id="runBtn">运行</button>
+      <button class="btn" id="resetBtn">重置</button>
+      <button class="btn" id="demoBtn">载入示例</button>
+      <button class="btn" id="clearBtn">清地图</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+</div>
+
+<script>
+const N=8, EMPTY='empty';
+const PALETTE=[
+  {k:'select',name:'选择',c:'#378add'},
+  {k:'erase',name:'橡皮',c:'#5f5e5a'},
+  {k:'wall',name:'墙',c:'#444441'},
+  {k:'gem',name:'宝石',c:'#ef9f27'},
+  {k:'switch',name:'开关',c:'#d85a30'},
+  {k:'portalA',name:'传送门A',c:'#1d9e75'},
+  {k:'goal',name:'终点',c:'#639922'},
+  {k:'start',name:'设起点',c:'#534ab7'},
+];
+const BLOCKS=[
+  {t:'forward',name:'前进',c:'#378add'},
+  {t:'turnLeft',name:'左转',c:'#534ab7'},
+  {t:'turnRight',name:'右转',c:'#534ab7'},
+  {t:'collect',name:'收集宝石',c:'#ef9f27'},
+  {t:'toggle',name:'切换开关',c:'#d85a30'},
+  {t:'jump',name:'跳',c:'#1d9e75'},
+  {t:'loop',name:'重复 N 次',c:'#1d9e75'},
+  {t:'endloop',name:'结束重复',c:'#5f5e5a'},
+];
+const DIRS=[[0,-1],[1,0],[0,1],[-1,0]]; // N E S W ; [dx,dy]
+
+let map, hero, selected='select', program=[];
+function initMap(){ map=Array.from({length:N},()=>Array.from({length:N},()=>({type:EMPTY,on:false})));
+  hero={x:0,y:N-1,dir:1}; renderMap(); }
+
+function renderPalette(){
+  const el=document.getElementById('palette'); el.innerHTML='';
+  PALETTE.forEach(p=>{
+    const d=document.createElement('div'); d.className='pal'+(selected===p.k?' active':'');
+    d.innerHTML=`<span class="sw" style="background:${p.c}"></span>${p.name}`;
+    d.onclick=()=>{selected=p.k;renderPalette();};
+    el.appendChild(d);
+  });
+}
+function renderBlockBtns(){
+  const el=document.getElementById('blockBtns'); el.innerHTML='';
+  BLOCKS.forEach(b=>{
+    const d=document.createElement('button'); d.className='badd';
+    d.textContent=b.name; d.style.borderLeft=`3px solid ${b.c}`;
+    d.onclick=()=>{
+      const item={t:b.t};
+      if(b.t==='loop'){ const n=prompt('重复几次？',3); item.n=Math.max(1,parseInt(n)||1); }
+      program.push(item); renderProgram();
+    };
+    el.appendChild(d);
+  });
+}
+function renderProgram(){
+  const el=document.getElementById('program'); el.innerHTML='';
+  if(program.length===0){el.innerHTML='<div class="empty-hint">还没有指令，点上面的按钮添加</div>';return;}
+  program.forEach((it,i)=>{
+    const b=BLOCKS.find(x=>x.t===it.t);
+    const d=document.createElement('div');
+    d.className='pblock'+(it.t==='loop'?' loop':it.t==='endloop'?' endloop':'');
+    d.style.background=b.c+'22';
+    const label=it.t==='loop'?`重复 ${it.n} 次`:b.name;
+    d.innerHTML=`<span>${label}</span><span class="del" data-i="${i}">×</span>`;
+    d.querySelector('.del').onclick=()=>{program.splice(i,1);renderProgram();};
+    el.appendChild(d);
+  });
+}
+function renderMap(stepNo){
+  const el=document.getElementById('grid'); el.innerHTML='';
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const c=map[y][x]; const d=document.createElement('div'); d.className='cell';
+    if(c.type==='wall')d.classList.add('wall');
+    if(hero.x===x&&hero.y===y)d.classList.add('here');
+    if(c.type==='gem'){const g=document.createElement('div');g.className='gem';d.appendChild(g);}
+    if(c.type==='switch'){const s=document.createElement('div');s.className=c.on?'sw-on':'sw-off';d.appendChild(s);}
+    if(c.type==='portalA'){const p=document.createElement('div');p.className='portal';p.textContent='A';d.appendChild(p);}
+    if(c.type==='goal'){const g=document.createElement('div');g.className='goal';d.appendChild(g);}
+    if(hero.x===x&&hero.y===y){
+      const h=document.createElement('div');h.className='hero';h.id='heroEl';
+      h.style.transform=`rotate(${hero.dir*90}deg)`;d.appendChild(h);
+    }
+    if(stepNo!==undefined){const n=document.createElement('span');n.className='num';n.textContent=stepNo;d.appendChild(n);}
+    d.onclick=()=>onCell(x,y);
+    el.appendChild(d);
+  }
+}
+function onCell(x,y){
+  if(selected==='select')return;
+  const c=map[y][x];
+  if(selected==='erase'){c.type=EMPTY;c.on=false;}
+  else if(selected==='start'){hero.x=x;hero.y=y;}
+  else if(selected==='switch'){c.type='switch';c.on=!c.on;}
+  else if(selected==='portalA'){c.type=c.type==='portalA'?EMPTY:'portalA';}
+  else {c.type=selected;c.on=false;}
+  renderMap();
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function portalTarget(x,y){
+  if(map[y][x].type!=='portalA')return null;
+  for(let yy=0;yy<N;yy++)for(let xx=0;xx<N;xx++)
+    if((xx!==x||yy!==y)&&map[yy][xx].type==='portalA')return{x:xx,y:yy};
+  return null;
+}
+async function run(){
+  document.getElementById('status').innerHTML='';
+  let h={...hero}; let step=0;
+  const stack=[]; // {loopIdx,count}
+  let i=0;
+  while(i<program.length){
+    const it=program[i]; step++;
+    const [dx,dy]=DIRS[h.dir];
+    if(it.t==='forward'){
+      const nx=h.x+dx, ny=h.y+dy;
+      if(nx<0||ny<0||nx>=N||ny>=N||map[ny][nx].type==='wall'){ await fail(`第 ${step} 步：前方是墙或边界，撞上了`); return; }
+      h.x=nx;h.y=ny;
+      const tgt=portalTarget(h.x,h.y);
+      if(tgt){h.x=tgt.x;h.y=tgt.y;}
+    } else if(it.t==='jump'){
+      const nx=h.x+dx, ny=h.y+dy;
+      if(nx>=0&&ny>=0&&nx<N&&ny<N&&map[ny][nx].type==='wall'){h.x=nx;h.y=ny;}
+      else if(nx>=0&&ny>=0&&nx<N&&ny<N){h.x=nx;h.y=ny;} // simple: jump over one cell
+    } else if(it.t==='turnLeft'){h.dir=(h.dir+3)%4;}
+      else if(it.t==='turnRight'){h.dir=(h.dir+1)%4;}
+      else if(it.t==='collect'){ if(map[h.y][h.x].type==='gem'){map[h.y][h.x].type=EMPTY;} }
+      else if(it.t==='toggle'){ if(map[h.y][h.x].type==='switch'){map[h.y][h.x].on=!map[h.y][h.x].on;} }
+      else if(it.t==='loop'){ stack.push({idx:i,count:it.n-1}); }
+      else if(it.t==='endloop'){
+        const top=stack[stack.length-1];
+        if(top&&top.count>0){top.count--; i=top.idx+1; renderHero(h,step); await sleep(300); continue;}
+        else stack.pop();
+      }
+    renderHero(h,step); await sleep(300);
+    i++;
+  }
+  checkWin(h);
+}
+function renderHero(h,step){ hero.x=h.x;hero.y=h.y;hero.dir=h.dir; renderMap(step); }
+function fail(msg){ document.getElementById('status').innerHTML=`<span class="bad">${msg}</span>`; }
+function checkWin(h){
+  let gems=0,swOff=0;
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    if(map[y][x].type==='gem')gems++;
+    if(map[y][x].type==='switch'&&!map[y][x].on)swOff++;
+  }
+  const atGoal=map[h.y][h.x].type==='goal';
+  let msg='';
+  if(gems>0)msg+=`还剩 ${gems} 颗宝石没收。`;
+  if(swOff>0)msg+=`还有 ${swOff} 个开关没开。`;
+  if(!atGoal)msg+='没到终点。';
+  if(msg==='')document.getElementById('status').innerHTML='<span class="ok">胜利！全部完成 🎉</span>'.replace('🎉','');
+  else document.getElementById('status').innerHTML=`<span class="bad">还没赢：${msg}</span>`;
+}
+function loadDemo(){
+  initMap();
+  // 示例关卡：左下出发，收宝石、过传送门、到右上
+  map[7][2].type='gem'; map[5][4].type='gem';
+  map[4][2].type='portalA'; map[3][5].type='portalA';
+  map[5][3].type='switch'; map[1][6].type='goal';
+  hero={x:0,y:7,dir:1};
+  program=[
+    {t:'forward'},{t:'forward'},{t:'collect'},
+    {t:'turnLeft'},{t:'forward'},{t:'forward'},{t:'toggle'},
+    {t:'turnRight'},{t:'forward'},{t:'forward'}, // 踏入传送门A -> 传送到 (5,3)
+    {t:'forward'},{t:'turnLeft'},{t:'forward'},{t:'forward'},{t:'forward'},{t:'forward'},
+  ];
+  renderProgram(); renderMap();
+}
+document.getElementById('runBtn').onclick=run;
+document.getElementById('resetBtn').onclick=()=>{renderMap();document.getElementById('status').innerHTML='';};
+document.getElementById('demoBtn').onclick=loadDemo;
+document.getElementById('clearBtn').onclick=()=>initMap();
+renderPalette(); renderBlockBtns(); initMap();
+</script>
+</body>
+</html>
