@@ -44,10 +44,15 @@
     border-bottom:18px solid var(--green);}
   .start-mark{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--purple);
     top:3px;left:3px;}
-  .hero{position:absolute;width:30px;height:30px;border-radius:50%;background:var(--blue);
-    display:flex;align-items:center;justify-content:center;transition:all .25s;}
-  .hero::after{content:"";position:absolute;top:-6px;border-left:6px solid transparent;
-    border-right:6px solid transparent;border-bottom:9px solid #e8e8ec;}
+  .hero{position:absolute;width:36px;height:36px;display:flex;align-items:flex-end;
+    justify-content:center;transition:all .25s;pointer-events:none;}
+  .hero img{width:100%;height:100%;object-fit:contain;object-position:center bottom;
+    pointer-events:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35));}
+  .hero::after{content:"";position:absolute;top:-5px;left:50%;
+    transform:translateX(-50%);
+    border-left:6px solid transparent;border-right:6px solid transparent;
+    border-bottom:9px solid #ffd84d;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));}
   .cell.here{background:#2d3550;}
   /* program */
   .prog-panel{width:420px;}
@@ -91,7 +96,8 @@
     <div class="palette" id="palette"></div>
     <div class="grid" id="grid"></div>
     <div class="legend">
-      蓝点是角色起点 · 黄菱形=宝石 · 橙圈=开关(点一下拨动) · 青圈=传送门(成对 A↔A) · 绿三角=终点 · 灰块=墙
+      <p>蓝点是角色起点 · 黄菱形=宝石 · 橙圈=开关(点一下拨动) · 青圈=传送门(成对 A↔A) · 绿三角=终点 · 灰块=墙</p>
+      <p style="margin-top:4px;color:var(--muted);">角色就是那只青蛙，上方黄色三角箭头指示面向方向（N/E/S/W）。</p>
     </div>
   </div>
 
@@ -174,6 +180,7 @@ function renderMap(stepNo){
     if(c.type==='goal'){const g=document.createElement('div');g.className='goal';d.appendChild(g);}
     if(hero.x===x&&hero.y===y){
       const h=document.createElement('div');h.className='hero';h.id='heroEl';
+      h.innerHTML='<img src="hero.png" alt="角色">';
       h.style.transform=`rotate(${hero.dir*90}deg)`;d.appendChild(h);
     }
     if(stepNo!==undefined){const n=document.createElement('span');n.className='num';n.textContent=stepNo;d.appendChild(n);}

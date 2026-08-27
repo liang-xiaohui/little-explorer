@@ -153,7 +153,12 @@
 <script>
 // ============ 图标 ============
 const MAP={
-  hero:`<circle cx="20" cy="14" r="6" fill="INK"/><rect x="13" y="20" width="14" height="14" rx="4" fill="INK"/><path d="M34 16L40 11V21Z" fill="INK"/>`,
+  // 角色：用上传的青蛙图（hero.png），4 个朝向各加一个朝向箭头
+  hero:`<image href="hero.png" x="6" y="6" width="28" height="28" preserveAspectRatio="xMidYMid meet"/>`,
+  heroN:`<image href="hero.png" x="6" y="6" width="28" height="28" preserveAspectRatio="xMidYMid meet"/><path d="M20 0L26 7H14Z" fill="#ffce3a" stroke="#a87400" stroke-width="1.2"/>`,
+  heroE:`<image href="hero.png" x="6" y="6" width="28" height="28" preserveAspectRatio="xMidYMid meet"/><path d="M40 20L33 26V14Z" fill="#ffce3a" stroke="#a87400" stroke-width="1.2"/>`,
+  heroS:`<image href="hero.png" x="6" y="6" width="28" height="28" preserveAspectRatio="xMidYMid meet"/><path d="M20 40L14 33H26Z" fill="#ffce3a" stroke="#a87400" stroke-width="1.2"/>`,
+  heroW:`<image href="hero.png" x="6" y="6" width="28" height="28" preserveAspectRatio="xMidYMid meet"/><path d="M0 20L7 14V26Z" fill="#ffce3a" stroke="#a87400" stroke-width="1.2"/>`,
   gem:`<path d="M20 6L32 20L20 34L8 20Z" fill="INK" fill-opacity="0.25"/>`,
   sw:`<rect x="9" y="14" width="22" height="12" rx="6"/><circle cx="26" cy="20" r="5" fill="INK"/>`,
   portal:`<circle cx="20" cy="20" r="13"/><circle cx="20" cy="20" r="7" fill="INK" fill-opacity="0.3"/><circle cx="20" cy="20" r="2.5" fill="INK"/>`,
@@ -173,13 +178,16 @@ function icon(kind,color){
 }
 
 const ELEMENTS=[
-  {k:'hero',nm:'角色',ds:'小探险家',c:'#378ADD'},
-  {k:'gem',nm:'宝石',ds:'收集目标',c:'#EF9F27'},
-  {k:'sw',nm:'开关',ds:'踩一下切换开/关',c:'#D85A30'},
-  {k:'portal',nm:'传送门',ds:'成对，踩上瞬移',c:'#1D9E75'},
-  {k:'wall',nm:'墙',ds:'不可通行',c:'#5F5E5A',n:52},
-  {k:'goal',nm:'终点',ds:'到达即胜利',c:'#639922'},
-  {k:'start',nm:'起点',ds:'角色出发处',c:'#534AB7'},
+  {k:'heroN',nm:'角色↑',ds:'朝北',c:'#378ADD',n:10},
+  {k:'heroE',nm:'角色→',ds:'朝东',c:'#378ADD',n:10},
+  {k:'heroS',nm:'角色↓',ds:'朝南',c:'#378ADD',n:10},
+  {k:'heroW',nm:'角色←',ds:'朝西',c:'#378ADD',n:10},
+  {k:'gem',nm:'宝石',ds:'收集目标',c:'#EF9F27',n:18},
+  {k:'sw',nm:'开关',ds:'踩一下切换开/关',c:'#D85A30',n:18},
+  {k:'portal',nm:'传送门',ds:'成对，踩上瞬移',c:'#1D9E75',n:18},
+  {k:'wall',nm:'墙',ds:'不可通行',c:'#5F5E5A',n:24},
+  {k:'goal',nm:'终点',ds:'到达即胜利',c:'#639922',n:18},
+  {k:'start',nm:'起点',ds:'角色出发处',c:'#534AB7',n:18},
 ];
 const BLOCKS=[
   {k:'fwd',nm:'前进',short:'前进',c:'#378ADD'},
@@ -271,9 +279,9 @@ const PAGES=[
   { t:'空白探险地图（2 / 2）', s:'每张 5×5 格（格子 14mm），留白拼出任何场景。每页 6 张（2 列 × 3 行）。',
     b:mapsBody(6,7) },
   { t:'图例贴纸（1 / 2）', s:'每格≈地图一格大小。顶部对照条帮助认图标。可整页多印。',
-    b:legendBody(ELEMENTS.slice(0,4)) },
-  { t:'图例贴纸（2 / 2）', s:'每格≈地图一格大小。',
-    b:legendBody(ELEMENTS.slice(4,7)) },
+    b:legendBody(ELEMENTS.slice(0,6)) },
+  { t:'图例贴纸（2 / 2）', s:'剩余元素（宝石/开关/传送门/墙）。',
+    b:legendBody(ELEMENTS.slice(6)) },
   { t:'程序动作块（1 / 2）', s:'按顺序排列 = 执行顺序。块小、数量多，方便反复拼。',
     b:actionsBody(BLOCKS.slice(0,3)) },
   { t:'程序动作块（2 / 2）', s:'按顺序排列 = 执行顺序。',
