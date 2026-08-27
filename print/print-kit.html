@@ -2,104 +2,156 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>小小探险家 · 打印套件（彩色纸质地图 + 图例贴纸 + 程序积木）</title>
+<title>小小探险家 · 打印套件（每页一张 A4 · 方向键翻页）</title>
 <style>
   :root{ --ink:#1a1a1a; --line:#bbb; --cut:#999; }
   *{ box-sizing:border-box; }
-  body{ margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--ink); }
-  @page { size:A4; margin:8mm; }
-  .page{ page-break-after:always; }            /* 地图：每页固定 2 张，干净 */
-  .ctrl{ page-break-before:always; }           /* 控制结构大块：从新页起，避免与小贴纸混排 */
-  .title{ font-size:15px; font-weight:600; margin:0 0 4mm; border-bottom:2px solid var(--ink); padding-bottom:2mm; }
-  .sub{ font-size:11px; color:#555; margin:0 0 4mm; }
+  html,body{ margin:0; height:100%; }
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--ink); background:#e9e9ec; overflow:hidden;
+  }
 
-  /* 地图：每页 2 张 5×5，刚好填满 A4 高度 */
-  .maps{ display:flex; flex-direction:column; gap:8mm; align-items:flex-start; page-break-inside:avoid; }
-  .map{ border:1px dashed var(--cut); padding:3mm; background:#fff; page-break-inside:avoid; }
-  .map h3{ margin:0 0 2mm; font-size:12px; font-weight:600; }
-  .map .grid{ display:grid; grid-template-columns:repeat(5,26mm); grid-template-rows:repeat(5,26mm); }
-  .map .cell{ border:0.5px solid var(--line); display:flex; align-items:center; justify-content:center; }
+  /* ===== 顶部导航条（屏幕上） ===== */
+  #nav{
+    position:fixed; top:0; left:0; right:0; height:48px; z-index:50;
+    display:flex; align-items:center; gap:10px; padding:0 14px;
+    background:#1f2330; color:#fff; font-size:14px; user-select:none;
+  }
+  #nav .arrow{
+    cursor:pointer; border:1px solid #555; background:#2c3142; color:#fff;
+    width:34px; height:30px; border-radius:6px; font-size:16px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #nav .arrow:hover{ background:#3a4055; }
+  #nav .arrow:active{ transform:translateY(1px); }
+  #nav .pinfo{ min-width:160px; text-align:center; font-weight:600; }
+  #nav .spacer{ flex:1; }
+  #nav button{
+    cursor:pointer; border:none; border-radius:6px; padding:7px 12px;
+    font-size:13px; font-weight:600; background:#378ADD; color:#fff;
+  }
+  #nav button.alt{ background:#534AB7; }
+  #nav button:hover{ filter:brightness(1.08); }
 
-  /* 图例对照条（印在贴纸页顶部，省一页独立卡） */
-  .overview{ display:grid; grid-template-columns:repeat(4,1fr); gap:2mm 4mm; margin-bottom:4mm; page-break-inside:avoid; }
+  /* ===== 舞台：居中显示当前 A4 页 ===== */
+  #stage{
+    position:absolute; top:48px; left:0; right:0; bottom:0;
+    display:flex; align-items:center; justify-content:center;
+    overflow:auto; padding:20px;
+  }
+  #wrap{ transform-origin:top center; }
+
+  /* ===== 单张 A4 页 ===== */
+  .sheet{
+    width:210mm; height:297mm; padding:8mm; background:#fff;
+    box-shadow:0 4px 24px rgba(0,0,0,.28);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .phead{ font-size:15px; font-weight:700; margin:0 0 2mm; border-bottom:2px solid var(--ink); padding-bottom:2mm; }
+  .psub{ font-size:10.5px; color:#555; margin:0 0 3mm; line-height:1.5; }
+  .pbody{ flex:1; min-height:0; }
+
+  /* 地图：每页 2 张 5×5 */
+  .maps{ display:flex; flex-direction:column; gap:5mm; }
+  .map{ border:1px dashed var(--cut); padding:2.5mm; background:#fff; }
+  .map h3{ margin:0 0 1.5mm; font-size:11px; font-weight:600; }
+  .map .grid{ display:grid; grid-template-columns:repeat(5,22mm); grid-template-rows:repeat(5,22mm); }
+  .map .cell{ border:0.5px solid var(--line); }
+
+  /* 图例对照条 */
+  .overview{ display:grid; grid-template-columns:repeat(4,1fr); gap:2mm 4mm; margin-bottom:3mm; }
   .ov{ display:flex; align-items:center; gap:2mm; border:1px solid var(--line); padding:1.5mm 2mm; }
-  .ov svg{ width:16px; height:16px; flex:none; }
-  .ov .nm{ font-size:11px; font-weight:600; }
+  .ov svg{ width:15px; height:15px; flex:none; }
+  .ov .nm{ font-size:10px; font-weight:600; }
 
   /* 贴纸通用 */
-  .sticker{ border:1px dashed var(--cut); display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fff; page-break-inside:avoid; }
-  .sticker svg{ width:15mm; height:15mm; }
-  .sticker .lbl{ font-size:9px; margin-top:1mm; }
-  .legend-rows{ display:flex; flex-direction:column; gap:2.5mm; }
-  .legend-row .rh{ font-size:11px; font-weight:600; margin-bottom:1mm; }
+  .sticker{ border:1px dashed var(--cut); display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fff; }
+  .sticker svg{ width:14mm; height:14mm; }
+  .sticker .lbl{ font-size:8.5px; margin-top:1mm; }
+  .legend-rows{ display:flex; flex-direction:column; gap:2mm; }
+  .legend-row .rh{ font-size:10.5px; font-weight:600; margin-bottom:1mm; }
   .legend-row .rgrid{ display:flex; flex-wrap:wrap; gap:2mm; }
-  .legend-row .sticker{ width:26mm; height:26mm; }
+  .legend-row .sticker{ width:24mm; height:24mm; }
 
   /* 程序动作块：小积木 */
   .prog-wrap{ display:flex; flex-wrap:wrap; gap:2mm; }
-  .prog{ width:42mm; height:18mm; border:1px dashed var(--cut); border-radius:3mm; display:flex; align-items:center; gap:1.5mm; padding:0 2mm; background:#fff; page-break-inside:avoid; }
+  .prog{ width:42mm; height:18mm; border:1px dashed var(--cut); border-radius:3mm; display:flex; align-items:center; gap:1.5mm; padding:0 2mm; background:#fff; }
   .prog svg{ width:11mm; height:11mm; flex:none; }
   .prog .pt{ font-size:10px; font-weight:700; line-height:1; }
 
   /* 条件贴纸（药丸） */
   .cond-wrap{ display:flex; flex-wrap:wrap; gap:2mm; }
-  .cond{ border:1.5px solid #999; border-radius:9mm; padding:2mm 4mm; font-size:11px; font-weight:700; background:#fff; page-break-inside:avoid; }
+  .cond{ border:1.5px solid #999; border-radius:9mm; padding:2mm 4mm; font-size:11px; font-weight:700; background:#fff; }
 
   /* === 开口括号结构块：顶部色带 + 左侧虚线作用域 + 底部△结束，不围合，可嵌套 === */
-  .grp{ display:flex; flex-direction:column; page-break-inside:avoid; margin:1.5mm 0; }
+  .grp{ display:flex; flex-direction:column; margin:1.5mm 0; }
   .grp-big{ width:180mm; }     /* 外层用：几乎满 A4 宽，醒目 = 大块 */
   .grp-small{ width:148mm; }   /* 内层/嵌套用：外宽 148mm，能放进 big 的作用域留白区 */
-  .ghead{ font-size:14px; font-weight:700; padding:2mm 3mm; border:1.5px solid var(--ink); border-bottom:none; border-radius:4mm 4mm 0 0; background:#f3f3f3; }
+  .ghead{ font-size:13px; font-weight:700; padding:1.5mm 3mm; border:1.5px solid var(--ink); border-bottom:none; border-radius:4mm 4mm 0 0; background:#f3f3f3; }
   .ghead.loop{ background:#378ADD; color:#fff; border-color:#378ADD; }
   .ghead.while{ background:#1D9E75; color:#fff; border-color:#1D9E75; }
   .ghead.func{ background:#534AB7; color:#fff; border-color:#534AB7; }
   .ghead.branch{ background:#D85A30; color:#fff; border-color:#D85A30; }
-  .gblank{ display:inline-block; min-width:14mm; border-bottom:1.5px solid currentColor; text-align:center; }
-  .gcond{ display:inline-block; min-width:62mm; border-bottom:1.5px dashed currentColor; text-align:center; font-weight:400; font-size:11px; }
-  .gbody{ margin-left:10mm; padding:2mm 0 2mm 2mm; border-left:3px dashed #bbb; min-height:40mm; color:#999; font-size:10px; }
-  .gfoot{ font-size:11px; font-weight:700; color:#777; padding:1mm 3mm; }
+  .gblank{ display:inline-block; min-width:12mm; border-bottom:1.5px solid currentColor; text-align:center; }
+  .gcond{ display:inline-block; min-width:58mm; border-bottom:1.5px dashed currentColor; text-align:center; font-weight:400; font-size:10.5px; }
+  .gbody{ margin-left:9mm; padding:2mm 0 2mm 2mm; border-left:3px dashed #bbb; min-height:26mm; color:#999; font-size:9.5px; }
+  .grp-small .gbody{ min-height:18mm; }
+  .gfoot{ font-size:10.5px; font-weight:700; color:#777; padding:1mm 3mm; }
   .gfoot::before{ content:"△ "; }
 
-  /* 逻辑运算符贴纸（且/或/非）：深底白字，区别于条件药丸 */
-  .logic{ background:#2b2b2b; color:#fff; border:1.5px solid #2b2b2b; border-radius:6mm; padding:2mm 4mm; font-size:11px; font-weight:700; page-break-inside:avoid; }
+  /* 逻辑运算符贴纸（且/或/非） */
+  .logic{ background:#2b2b2b; color:#fff; border:1.5px solid #2b2b2b; border-radius:6mm; padding:2mm 4mm; font-size:11px; font-weight:700; }
   /* 调用贴纸 */
-  .call{ width:44mm; height:18mm; border:1px solid #534AB7; border-radius:3mm; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; background:#534AB718; color:#534AB7; page-break-inside:avoid; }
+  .call{ width:44mm; height:18mm; border:1px solid #534AB7; border-radius:3mm; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; background:#534AB718; color:#534AB7; }
 
-  /* 变量部件：变量名贴纸 + 变量值面板 */
-  .varpanel{ border:2px dashed var(--ink); border-radius:8mm; padding:3mm; background:#fff; page-break-inside:avoid; }
-  .varpanel .ptitle{ font-size:13px; font-weight:700; margin-bottom:2mm; }
-  .varlines{ display:flex; flex-direction:column; gap:3mm; }
-  .varline{ display:flex; align-items:center; gap:2mm; font-size:12px; }
+  /* 变量部件 */
+  .varpanel{ border:2px dashed var(--ink); border-radius:8mm; padding:3mm; background:#fff; }
+  .varpanel .ptitle{ font-size:12px; font-weight:700; margin-bottom:2mm; }
+  .varlines{ display:flex; flex-direction:column; gap:2.5mm; }
+  .varline{ display:flex; align-items:center; gap:2mm; font-size:11px; }
   .varline .lab{ font-weight:600; }
-  .varline .nm{ min-width:40mm; border-bottom:1px solid var(--ink); text-align:center; }
-  .varline .vl{ min-width:26mm; border-bottom:1px solid var(--ink); text-align:center; }
-  .vartag{ width:46mm; height:30mm; border:1.5px dashed var(--ink); border-radius:4mm; padding:2mm; background:#fff; display:flex; flex-direction:column; justify-content:center; gap:2mm; font-size:10px; font-weight:600; page-break-inside:avoid; }
+  .varline .nm{ min-width:38mm; border-bottom:1px solid var(--ink); text-align:center; }
+  .varline .vl{ min-width:24mm; border-bottom:1px solid var(--ink); text-align:center; }
+  .vartag{ width:44mm; height:28mm; border:1.5px dashed var(--ink); border-radius:4mm; padding:2mm; background:#fff; display:flex; flex-direction:column; justify-content:center; gap:2mm; font-size:9.5px; font-weight:600; }
   .vartag .ln{ display:flex; align-items:center; gap:1.5mm; }
-  .vartag .fill{ flex:1; border-bottom:1px solid var(--ink); min-height:7mm; }
+  .vartag .fill{ flex:1; border-bottom:1px solid var(--ink); min-height:6mm; }
 
-  /* 屏幕说明（打印时隐藏） */
-  .screen-only{ background:#fffbe6; border:1px solid #e0c000; padding:10px 14px; margin:12px; border-radius:8px; font-size:13px; line-height:1.7; }
-  .screen-only b{ color:#7a5b00; }
-  @media print{ .screen-only{ display:none !important; } body{ font-size:11pt; } }
+  .hsep{ width:100%; font-size:12px; font-weight:700; margin:2mm 0 1mm; color:#333; }
+
+  /* 打印容器（隐藏，打印时填入全部页） */
+  #printAll{ display:none; }
+
+  @media print{
+    @page{ size:A4; margin:0; }
+    html,body{ background:#fff; overflow:visible; height:auto; }
+    #nav, #stage, .screen-tip{ display:none !important; }
+    #printAll{ display:block !important; }
+    #printAll .sheet{
+      width:210mm; height:297mm; padding:8mm; background:#fff; box-shadow:none;
+      transform:none !important; page-break-after:always; overflow:hidden;
+    }
+    #printAll .sheet:last-child{ page-break-after:auto; }
+  }
 </style>
 </head>
 <body>
 
-<div class="screen-only">
-  <b>打印说明（只看这一屏，打完后基本不用再看屏幕）</b><br>
-  1. 按 <b>Ctrl/Cmd + P</b> 打开打印，纸张选 <b>A4</b>，勾选 <b>「背景图形」</b>（否则虚线、彩色和图标可能不显示），可设<b>彩色打印</b>。<br>
-  2. 排版已按 A4 紧凑填满：地图每页 2 张；小贴纸（图例/动作/条件）连续流自动填满；控制结构大块单独成页。<br>
-  3. 沿<b>虚线</b>剪下图例贴纸、小动作块、以及各种<b>开口括号结构块</b>（每条 = 顶部色带 + 左侧虚线「作用域」+ 底部「△ 结束」标签），就是实体积木。<b>一个结构块是一条，不用再单独剪「结束」小条。</b><br>
-  4. 玩法：空白地图贴图例拼出「探险地图」→ 把结构块（默认用<b>大框</b>）贴在大纸上作程序骨架，在「作用域」留白处贴动作块 / 条件药丸 → 按程序移动角色（手指或棋子）。<br>
-  5. 网页版（web/index.html）保留，作参考。<br>
-  6. 变量部件：变量名贴纸手写名字、贴到结构块旁引用；变量面板用铅笔填值，虚拟运行时擦改写。<br>
-  7. 控制件统一为<b>开口括号</b>风格、可嵌套：<b>循环 / 条件循环</b>（重复 N 次 / 当[条件]时重复）、<b>函数</b>（定义一次，用「调用」贴纸多次调用）、<b>分支链</b>（如果 / 否则如果 / 否则）、<b>逻辑运算符</b>（且/或/非，串接条件药丸）、<b>扩展条件</b>（开关关着 / 左侧有墙）。嵌套时把<b>小框</b>整条贴进大框的作用域留白区即可。对应 Swift 的 for / while / func / if-else / && || !。
+<div id="nav">
+  <div class="arrow" id="prev" title="上一页（←）">‹</div>
+  <div class="pinfo" id="pinfo">第 1 / 1 页</div>
+  <div class="arrow" id="next" title="下一页（→）">›</div>
+  <div class="spacer"></div>
+  <button id="printCur" class="alt">打印本页</button>
+  <button id="printAllBtn">打印全部</button>
 </div>
 
-<div id="kit"></div>
+<div class="screen-tip" style="position:fixed;bottom:8px;left:50%;transform:translateX(-50%);font-size:11px;color:#888;z-index:40;">提示：用 ← → 方向键翻页</div>
+<div id="stage"><div id="wrap"><div class="sheet" id="sheet"></div></div></div>
+<div id="printAll"></div>
 
 <script>
-// 彩色图标：用各元素/块的主色描边与填充
+// ============ 图标 ============
 const MAP={
   hero:`<circle cx="20" cy="14" r="6" fill="INK"/><rect x="13" y="20" width="14" height="14" rx="4" fill="INK"/><path d="M34 16L40 11V21Z" fill="INK"/>`,
   gem:`<path d="M20 6L32 20L20 34L8 20Z" fill="INK" fill-opacity="0.25"/>`,
@@ -146,104 +198,161 @@ const CONDS=[
   {nm:'左侧有墙',c:'#5F5E5A'},
   {nm:'在传送门上',c:'#1D9E75'},
 ];
-// 逻辑运算符贴纸：把多个条件药丸串成组合条件
 const LOGIC=[
-  {nm:'且',c:'#2b2b2b'},
-  {nm:'或',c:'#2b2b2b'},
-  {nm:'非',c:'#2b2b2b'},
+  {nm:'且'},{nm:'或'},{nm:'非'}
 ];
-// 开口括号结构块生成器：size=big|small；head=顶部色带；foot=底部「△ 结束X」标签
+
+// 开口括号结构块生成器
 function grp(size, headClass, headHTML, foot){
   return `<div class="grp grp-${size}"><div class="ghead ${headClass}">${headHTML}</div>`
     + `<div class="gbody">把动作块 / 子结构贴在这里</div>`
     + `<div class="gfoot">结束${foot}</div></div>`;
 }
 
-const kit=document.getElementById('kit');
-
-// ---- 地图：2 页，每页 2 张 5×5，填满 A4 ----
-let s1='';
-for(let p=0;p<2;p++){
-  s1+=`<section class="page"><h2 class="title">空白探险地图（可手画 / 贴图例）</h2>
-<p class="sub">每张 5×5 格，留白拼出任何场景。打印后可多印。</p><div class="maps">`;
-  for(let i=0;i<2;i++){
-    const idx=p*2+i+1; let cells='';
+// ============ 各页内容构建器（返回 body 内的 HTML） ============
+function mapsBody(count, fromIdx){
+  let cellsAll='';
+  for(let i=0;i<count;i++){
+    const idx=fromIdx+i; let cells='';
     for(let c=0;c<25;c++) cells+=`<div class="cell"></div>`;
-    s1+=`<div class="map"><h3>地图 ${idx}　名字：____________</h3><div class="grid">${cells}</div></div>`;
+    cellsAll+=`<div class="map"><h3>地图 ${idx}　名字：____________</h3><div class="grid">${cells}</div></div>`;
   }
-  s1+=`</div></section>`;
+  return `<div class="maps">${cellsAll}</div>`;
 }
-kit.insertAdjacentHTML('beforeend',s1);
+function legendBody(list){
+  let ov='<div class="overview">';
+  list.forEach(e=>{ ov+=`<div class="ov">${icon(e.k,e.c)}<span class="nm">${e.nm}</span></div>`; });
+  ov+='</div><div class="legend-rows">';
+  list.forEach(e=>{
+    ov+=`<div class="legend-row"><div class="rh">${e.nm}（${e.ds}）</div><div class="rgrid">`;
+    for(let i=0;i<12;i++) ov+=`<div class="sticker">${icon(e.k,e.c)}<span class="lbl">${e.nm}</span></div>`;
+    ov+=`</div></div>`;
+  });
+  return ov+'</div>';
+}
+function actionsBody(list){
+  let s='<div class="prog-wrap">';
+  list.forEach(b=>{ for(let i=0;i<12;i++) s+=`<div class="prog" style="border-color:${b.c};background:${b.c}18">${icon(b.k,b.c)}<span class="pt">${b.short}</span></div>`; });
+  return s+'</div>';
+}
+function condsBody(list){
+  let s='<div class="cond-wrap">';
+  list.forEach(c=>{ for(let i=0;i<8;i++) s+=`<div class="cond" style="border-color:${c.c};color:${c.c}">${c.nm}</div>`; });
+  return s+'</div>';
+}
+function logicBody(){
+  let s='<p class="psub" style="margin-top:4mm">逻辑运算符贴纸（且 / 或 / 非，串接条件药丸）：</p><div class="cond-wrap">';
+  LOGIC.forEach(l=>{ for(let i=0;i<6;i++) s+=`<div class="logic">${l.nm}</div>`; });
+  return s+'</div>';
+}
+function controlBody(items){ // items: [{size,cls,head,foot,n}]
+  let s='<div class="cond-wrap" style="gap:1.5mm">';
+  items.forEach(it=>{ for(let i=0;i<it.n;i++) s+=grp(it.size,it.cls,it.head,it.foot); });
+  return s+'</div>';
+}
+function callsBody(n){
+  let s='<div class="cond-wrap" style="margin-top:3mm">';
+  for(let i=0;i<n;i++) s+=`<div class="call">调用 ____</div>`;
+  return s+'</div>';
+}
+function varsBody(){
+  let panel=`<div class="varpanel"><div class="ptitle">变量值面板（铅笔填，运行时改写）</div><div class="varlines">`;
+  for(let i=0;i<6;i++) panel+=`<div class="varline"><span class="lab">变量名</span><span class="nm">&nbsp;</span><span class="lab">= 数值</span><span class="vl">&nbsp;</span></div>`;
+  panel+=`</div></div><div class="cond-wrap" style="margin-top:4mm">`;
+  for(let i=0;i<12;i++) panel+=`<div class="vartag"><div class="ln">变量名<span class="fill">&nbsp;</span></div><div class="ln">数值<span class="fill">&nbsp;</span></div></div>`;
+  return panel+'</div>';
+}
 
-// ---- 图例贴纸 + 顶部对照条（合并，省一页） ----
-let s2=`<section><h2 class="title">图例贴纸（沿虚线剪，贴到地图格）</h2>
-<p class="sub">每格≈地图一格大小。顶部对照条帮助认图标。可整页多印。</p><div class="overview">`;
-ELEMENTS.forEach(e=>{ s2+=`<div class="ov">${icon(e.k,e.c)}<span class="nm">${e.nm}</span></div>`; });
-s2+=`</div><div class="legend-rows">`;
-ELEMENTS.forEach(e=>{
-  s2+=`<div class="legend-row"><div class="rh">${e.nm}（${e.ds}）</div><div class="rgrid">`;
-  for(let i=0;i<12;i++) s2+=`<div class="sticker">${icon(e.k,e.c)}<span class="lbl">${e.nm}</span></div>`;
-  s2+=`</div></div>`;
+// ============ 页面清单：每页 = 一张 A4 ============
+const PAGES=[
+  { t:'空白探险地图（1 / 2）', s:'每张 5×5 格，留白拼出任何场景。打印后可多印。',
+    b:mapsBody(2,1) },
+  { t:'空白探险地图（2 / 2）', s:'每张 5×5 格，留白拼出任何场景。打印后可多印。',
+    b:mapsBody(2,3) },
+  { t:'图例贴纸（1 / 2）', s:'每格≈地图一格大小。顶部对照条帮助认图标。可整页多印。',
+    b:legendBody(ELEMENTS.slice(0,4)) },
+  { t:'图例贴纸（2 / 2）', s:'每格≈地图一格大小。',
+    b:legendBody(ELEMENTS.slice(4,7)) },
+  { t:'程序动作块（1 / 2）', s:'按顺序排列 = 执行顺序。块小、数量多，方便反复拼。',
+    b:actionsBody(BLOCKS.slice(0,3)) },
+  { t:'程序动作块（2 / 2）', s:'按顺序排列 = 执行顺序。',
+    b:actionsBody(BLOCKS.slice(3,6)) },
+  { t:'条件药丸（1 / 2）', s:'剪下贴到结构块头部的「贴条件」虚线处。',
+    b:condsBody(CONDS.slice(0,4)) },
+  { t:'条件药丸（2 / 2）+ 逻辑运算', s:'条件药丸 + 逻辑运算符（且/或/非）串接组合条件。',
+    b:condsBody(CONDS.slice(4,7)) + logicBody() },
+  { t:'控制结构·外层（循环 / 当 / 函数）', s:'开口括号：顶部色带 + 左侧虚线作用域 + 底部△结束，不围合、可嵌套。此为「大框」(180mm)。',
+    b:controlBody([
+      {size:'big',cls:'loop',head:'重复 <span class="gblank">&nbsp;</span> 次',foot:'重复',n:2},
+      {size:'big',cls:'while',head:'当 <span class="gcond">贴条件</span> 时 重复',foot:'当',n:1},
+      {size:'big',cls:'func',head:'函数 <span class="gblank">&nbsp;</span>',foot:'函数',n:1},
+    ]) },
+  { t:'控制结构·外层（如果 / 否则如果）', s:'分支链：如果 / 否则如果 / 否则 上下拼成 else-if 链，条件处贴条件药丸。此为「大框」(180mm)。',
+    b:controlBody([
+      {size:'big',cls:'branch',head:'如果 <span class="gcond">贴条件</span>',foot:'如果',n:2},
+      {size:'big',cls:'branch',head:'否则如果 <span class="gcond">贴条件</span>',foot:'否则如果',n:3},
+    ]) },
+  { t:'控制结构·外层（否则如果 / 否则）+ 调用', s:'分支链收尾 + 函数调用贴纸（定义一次，多处调用）。',
+    b:controlBody([
+      {size:'big',cls:'branch',head:'否则如果 <span class="gcond">贴条件</span>',foot:'否则如果',n:1},
+      {size:'big',cls:'branch',head:'否则',foot:'否则',n:1},
+    ]) + callsBody(8) },
+  { t:'控制结构·嵌套用（小框 · 148mm）', s:'嵌套时把「小框」整条贴进大框作用域里（左侧虚线即缩进层级）。',
+    b:controlBody([
+      {size:'small',cls:'loop',head:'重复 <span class="gblank">&nbsp;</span> 次',foot:'重复',n:1},
+      {size:'small',cls:'while',head:'当 <span class="gcond">贴条件</span> 时 重复',foot:'当',n:1},
+      {size:'small',cls:'branch',head:'如果 <span class="gcond">贴条件</span>',foot:'如果',n:1},
+      {size:'small',cls:'branch',head:'否则如果 <span class="gcond">贴条件</span>',foot:'否则如果',n:1},
+    ]) },
+  { t:'变量部件', s:'变量名贴纸手写名字、贴到结构块旁引用；变量面板用铅笔填值，虚拟运行时改写。',
+    b:varsBody() },
+];
+
+// ============ 渲染与翻页 ============
+const MM=3.7795275591; // px per mm (96dpi)
+let idx=0;
+const sheet=document.getElementById('sheet');
+const wrap=document.getElementById('wrap');
+const pinfo=document.getElementById('pinfo');
+
+function render(){
+  const p=PAGES[idx];
+  sheet.innerHTML=`<div class="phead">${p.t}</div><div class="psub">${p.s}</div><div class="pbody">${p.b}</div>`;
+  pinfo.textContent=`第 ${idx+1} / ${PAGES.length} 页 · ${p.t}`;
+  fit();
+}
+function fit(){
+  const navH=48, padY=40, padX=40;
+  const availW=window.innerWidth-padX;
+  const availH=window.innerHeight-navH-padY;
+  const s=Math.min(availW/(210*MM), availH/(297*MM), 1.25);
+  sheet.style.transform=`scale(${s})`;
+  wrap.style.width=(210*MM*s)+'px';
+  wrap.style.height=(297*MM*s)+'px';
+}
+function go(d){ idx=Math.max(0,Math.min(PAGES.length-1, idx+d)); render(); }
+
+document.getElementById('prev').onclick=()=>go(-1);
+document.getElementById('next').onclick=()=>go(1);
+window.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'){ go(-1); e.preventDefault(); }
+  else if(e.key==='ArrowRight'){ go(1); e.preventDefault(); }
 });
-s2+=`</div></section>`;
-kit.insertAdjacentHTML('beforeend',s2);
+window.addEventListener('resize',fit);
 
-// ---- 程序动作块（连续流，自动填满） ----
-let s3=`<section><h2 class="title">程序动作块（小积木，沿虚线剪）</h2>
-<p class="sub">按顺序排列 = 执行顺序。块小、数量多，方便反复拼。</p><div class="prog-wrap">`;
-BLOCKS.forEach(b=>{ for(let i=0;i<14;i++) s3+=`<div class="prog" style="border-color:${b.c};background:${b.c}18">${icon(b.k,b.c)}<span class="pt">${b.short}</span></div>`; });
-s3+=`</div></section>`;
-kit.insertAdjacentHTML('beforeend',s3);
+// 打印：本页 / 全部
+function doPrint(range){
+  const pa=document.getElementById('printAll');
+  const list = range==='cur' ? [PAGES[idx]] : PAGES;
+  pa.innerHTML=list.map(p=>`<div class="sheet"><div class="phead">${p.t}</div><div class="psub">${p.s}</div><div class="pbody">${p.b}</div></div>`).join('');
+  document.body.classList.add('printing');
+  window.print();
+}
+window.onafterprint=()=>{ document.body.classList.remove('printing'); document.getElementById('printAll').innerHTML=''; };
+document.getElementById('printCur').onclick=()=>doPrint('cur');
+document.getElementById('printAllBtn').onclick=()=>doPrint('all');
 
-// ---- 条件贴纸（连续流） ----
-let s6=`<section><h2 class="title">条件贴纸（药丸） + 逻辑运算符</h2>
-<p class="sub">条件药丸剪下贴到结构块头部的「贴条件」虚线处；逻辑运算符把多个条件串成组合条件（如「脚下是宝石」<b>且</b>「前方有墙」）。</p><div class="cond-wrap">`;
-CONDS.forEach(c=>{ for(let i=0;i<10;i++) s6+=`<div class="cond" style="border-color:${c.c};color:${c.c}">${c.nm}</div>`; });
-s6+=`</div>
-<p class="sub" style="margin-top:5mm">逻辑运算符贴纸（且 / 或 / 非）：</p>
-<div class="cond-wrap">`;
-LOGIC.forEach(l=>{ for(let i=0;i<8;i++) s6+=`<div class="logic">${l.nm}</div>`; });
-s6+=`</div></section>`;
-kit.insertAdjacentHTML('beforeend',s6);
-
-// ---- 控制结构：开口括号（循环 + 条件循环 + 函数 + 分支链），可嵌套 ----
-let s5=`<section class="ctrl"><h2 class="title">控制结构：循环 + 条件循环 + 函数 + 分支链（开口括号 · 可嵌套）</h2>
-<p class="sub">每个结构 = 顶部色带（标题）+ 左侧虚线「作用域」+ 底部「△ 结束」标签，<b>不围合</b>。嵌套时把<b>内层结构整块</b>贴进外层作用域留白区即可，左侧虚线就是缩进层级。循环 / 当 / 函数用<b>大框</b>（醒目=大块，宽180mm）；<b>嵌套请用同结构的「小框」</b>（宽148mm，能正好放进大框作用域）。</p>`;
-
-// ① 外层结构（大框，180mm）
-s5+=`<h3 style="width:100%;font-size:13px;margin:2mm 0 1mm">① 外层结构（大框 · 180mm）</h3>`;
-for(let i=0;i<2;i++) s5+=grp('big','loop','重复 <span class="gblank">&nbsp;</span> 次','重复');
-for(let i=0;i<1;i++) s5+=grp('big','while','当 <span class="gcond">贴条件</span> 时 重复','当');
-for(let i=0;i<1;i++) s5+=grp('big','func','函数 <span class="gblank">&nbsp;</span>','函数');
-for(let i=0;i<2;i++) s5+=grp('big','branch','如果 <span class="gcond">贴条件</span>','如果');
-for(let i=0;i<3;i++) s5+=grp('big','branch','否则如果 <span class="gcond">贴条件</span>','否则如果');
-for(let i=0;i<1;i++) s5+=grp('big','branch','否则','否则');
-
-// ② 嵌套用（小框，148mm）
-s5+=`<h3 style="width:100%;font-size:13px;margin:4mm 0 1mm">② 嵌套用结构（小框 · 148mm，放进大框作用域里）</h3>`;
-for(let i=0;i<1;i++) s5+=grp('small','loop','重复 <span class="gblank">&nbsp;</span> 次','重复');
-for(let i=0;i<1;i++) s5+=grp('small','while','当 <span class="gcond">贴条件</span> 时 重复','当');
-for(let i=0;i<1;i++) s5+=grp('small','branch','如果 <span class="gcond">贴条件</span>','如果');
-for(let i=0;i<1;i++) s5+=grp('small','branch','否则如果 <span class="gcond">贴条件</span>','否则如果');
-
-// 调用贴纸
-s5+=`<div class="cond-wrap" style="margin-top:4mm">`;
-for(let i=0;i<8;i++) s5+=`<div class="call">调用 ____</div>`;
-s5+=`</div></section>`;
-kit.insertAdjacentHTML('beforeend',s5);
-
-// ---- 变量部件：变量名贴纸 + 变量值面板 ----
-let s8=`<section><h2 class="title">变量部件（虚拟运行时用铅笔改写）</h2>
-<p class="sub">变量名贴纸：手写变量名，可贴到结构块「重复 __ 次」旁引用它。变量面板：用铅笔填写当前值，运行时随程序改变。</p>
-<div class="varpanel">
-  <div class="ptitle">变量值面板（铅笔填，运行时改写）</div>
-  <div class="varlines">`;
-for(let i=0;i<6;i++) s8+=`<div class="varline"><span class="lab">变量名</span><span class="nm">&nbsp;</span><span class="lab">= 数值</span><span class="vl">&nbsp;</span></div>`;
-s8+=`</div></div>
-<div class="cond-wrap" style="margin-top:4mm">`;
-for(let i=0;i<12;i++) s8+=`<div class="vartag"><div class="ln">变量名<span class="fill">&nbsp;</span></div><div class="ln">数值<span class="fill">&nbsp;</span></div></div>`;
-s8+=`</div></section>`;
-kit.insertAdjacentHTML('beforeend',s8);
+render();
 </script>
 </body>
 </html>
